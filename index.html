@@ -206,6 +206,11 @@
     .btn-danger:hover:not(:disabled){background:rgba(231,76,94,.2)}
     /* Toast */
     .toast{min-height:20px;margin-top:8px;color:var(--accent);font-size:13px;text-align:center;transition:opacity .3s}
+    .audio-load{display:none;margin-top:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px}
+    .audio-load.show{display:block}
+    .audio-load-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink-dim);margin-bottom:8px}
+    .audio-load-track{height:6px;border-radius:999px;background:var(--panel-3);overflow:hidden}
+    .audio-load-bar{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .18s ease}
     /* Data Table */
     .table-panel{overflow:hidden}
     .toolbar{
@@ -324,6 +329,10 @@
           <button id="copyBtn" class="btn-default" type="button">复制</button>
         </div>
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
+        <div id="audioLoad" class="audio-load" aria-live="polite">
+          <div class="audio-load-top"><span>语音加载</span><span id="audioLoadText">0/10</span></div>
+          <div class="audio-load-track"><div id="audioLoadBar" class="audio-load-bar"></div></div>
+        </div>
       </section>
 
       <!-- Data List -->
@@ -339,8 +348,8 @@ const planeIds=["01","02","03","41","42","43"];
 const digitWords={"0":"洞","1":"幺","2":"两","3":"叁","4":"肆","5":"伍","6":"六","7":"拐","8":"捌","9":"勾"};
 const digitAudio={};
 let audioCtx=null,audioBuffers={},activeSources=[];
-const els={countInput:document.getElementById("countInput"),intervalInput:document.getElementById("intervalInput"),intervalVal:document.getElementById("intervalVal"),playbackRateInput:document.getElementById("playbackRateInput"),playbackRateVal:document.getElementById("playbackRateVal"),colGapInput:document.getElementById("colGapInput"),colGapVal:document.getElementById("colGapVal"),rateVal:document.getElementById("rateVal"),generateBtn:document.getElementById("generateBtn"),playBtn:document.getElementById("playBtn"),pauseBtn:document.getElementById("pauseBtn"),stopBtn:document.getElementById("stopBtn"),copyBtn:document.getElementById("copyBtn"),progressText:document.getElementById("progressText"),paceText:document.getElementById("paceText"),rateValText:document.getElementById("rateValText"),windowText:document.getElementById("windowText"),nowOutput:document.getElementById("nowOutput"),toast:document.getElementById("toast"),dataList:document.getElementById("dataList"),summaryText:document.getElementById("summaryText"),nowPanel:document.getElementById("nowPanel")};
-let rows=[],currentIndex=0,playing=false,paused=false,timerId=0,lastActive=null;
+const els={countInput:document.getElementById("countInput"),intervalInput:document.getElementById("intervalInput"),intervalVal:document.getElementById("intervalVal"),playbackRateInput:document.getElementById("playbackRateInput"),playbackRateVal:document.getElementById("playbackRateVal"),colGapInput:document.getElementById("colGapInput"),colGapVal:document.getElementById("colGapVal"),rateVal:document.getElementById("rateVal"),generateBtn:document.getElementById("generateBtn"),playBtn:document.getElementById("playBtn"),pauseBtn:document.getElementById("pauseBtn"),stopBtn:document.getElementById("stopBtn"),copyBtn:document.getElementById("copyBtn"),progressText:document.getElementById("progressText"),paceText:document.getElementById("paceText"),rateValText:document.getElementById("rateValText"),windowText:document.getElementById("windowText"),nowOutput:document.getElementById("nowOutput"),toast:document.getElementById("toast"),audioLoad:document.getElementById("audioLoad"),audioLoadText:document.getElementById("audioLoadText"),audioLoadBar:document.getElementById("audioLoadBar"),dataList:document.getElementById("dataList"),summaryText:document.getElementById("summaryText"),nowPanel:document.getElementById("nowPanel")};
+let rows=[],currentIndex=0,playing=false,paused=false,timerId=0,lastActive=null,isStarting=false;
 function pad3(v){return String(Math.round(v)).padStart(3,"0")}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
 function randomInt(min,max){return Math.floor(Math.random()*(max-min+1))+min}
@@ -375,18 +384,38 @@ function trimSilence(buffer,threshold=0.008){
 const AUDIO_VER="?v=4";
 function initAudio(){for(const d of Object.keys(digitWords)){if(!digitAudio[d])digitAudio[d]=`audio/${d}.wav${AUDIO_VER}`}}
 let audioBuffersLoaded=false;
+let audioLoadingPromise=null;
+function setAudioLoadProgress(loaded,total){
+  const pct=total?Math.round((loaded/total)*100):0;
+  els.audioLoad.classList.toggle("show",!audioBuffersLoaded);
+  els.audioLoadText.textContent=`${loaded}/${total}`;
+  els.audioLoadBar.style.width=`${pct}%`;
+}
 async function ensureAudioBuffers(){
   initAudio();
   if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
   if(audioCtx.state==="suspended")await audioCtx.resume();
   if(audioBuffersLoaded)return;
-  await Promise.all(Object.keys(digitWords).map(async d=>{
-    const res=await fetch(digitAudio[d],{cache:"no-store"});
-    const data=await res.arrayBuffer();
-    const decoded=await audioCtx.decodeAudioData(data);
-    audioBuffers[d]=trimSilence(decoded);
-  }));
-  audioBuffersLoaded=true;
+  if(audioLoadingPromise)return audioLoadingPromise;
+  audioLoadingPromise=(async()=>{
+    const digits=Object.keys(digitWords);
+    let loaded=0;
+    setAudioLoadProgress(loaded,digits.length);
+    els.playBtn.disabled=true;
+    for(const d of digits){
+      if(!audioBuffers[d]){
+        const res=await fetch(digitAudio[d],{cache:"no-store"});
+        const data=await res.arrayBuffer();
+        const decoded=await audioCtx.decodeAudioData(data);
+        audioBuffers[d]=trimSilence(decoded);
+      }
+      loaded+=1;
+      setAudioLoadProgress(loaded,digits.length);
+    }
+    audioBuffersLoaded=true;
+    window.setTimeout(()=>els.audioLoad.classList.remove("show"),350);
+  })().finally(()=>{audioLoadingPromise=null;updateStatus()});
+  return audioLoadingPromise;
 }
 function stopActiveSources(){
   activeSources.forEach(src=>{try{src.stop(0)}catch{}});
@@ -484,7 +513,7 @@ function updateStatus(){
   els.paceText.textContent=`${sec.toFixed(1)}s`;
   els.rateValText.textContent=`${rate.toFixed(1)}x`;
   els.windowText.textContent=playing?(paused?"暂停":"播报中"):"待机";
-  els.playBtn.disabled=playing&&!paused;
+  els.playBtn.disabled=isStarting||(playing&&!paused);
   els.pauseBtn.disabled=!playing;
   els.stopBtn.disabled=!playing&&currentIndex===0;
   els.pauseBtn.innerHTML=paused?"&#9654; 继续":"&#10074;&#10074; 暂停";
@@ -497,9 +526,22 @@ function cancelAudio(){
   stopActiveSources();
   if("speechSynthesis" in window)window.speechSynthesis.cancel();
 }
-function startPlayback(){
+async function startPlayback(){
+  if(isStarting||(playing&&!paused))return;
   if(!rows.length)generateData();
   cancelAudio();initAudio();
+  isStarting=true;
+  updateStatus();
+  try{
+    await ensureAudioBuffers();
+  }catch(e){
+    console.error(e);
+    showToast("语音加载失败，请刷新后重试");
+    isStarting=false;
+    updateStatus();
+    return;
+  }
+  isStarting=false;
   playing=true;paused=false;
   showToast("");
   els.nowPanel.classList.add("playing");
