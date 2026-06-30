@@ -353,8 +353,92 @@ let rows=[],currentIndex=0,playing=false,paused=false,timerId=0,lastActive=null,
 function pad3(v){return String(Math.round(v)).padStart(3,"0")}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
 function randomInt(min,max){return Math.floor(Math.random()*(max-min+1))+min}
-function buildInitialBearings(){const first=randomInt(5,24);const gaps=Array.from({length:5},()=>randomInt(48,60));const bearings=[first];for(const gap of gaps)bearings.push(bearings[bearings.length-1]+gap);return bearings}
-function generateData(){stopPlayback(false);const requested=Number(els.countInput.value)||120;const total=Math.max(6,Math.round(requested/6)*6);els.countInput.value=total;const rounds=total/6;const bearings=buildInitialBearings();const distances=Array.from({length:6},()=>randomInt(50,300));const bearingDrift=randomInt(-4,4)||3;const bearingSteps=Array.from({length:6},()=>bearingDrift+randomInt(-1,1));const distanceSteps=Array.from({length:6},()=>{const direction=Math.random()>.5?1:-1;return direction*randomInt(6,17)});rows=[];for(let round=0;round<rounds;round++){for(let i=0;i<6;i++){if(round>0){bearings[i]=clamp(bearings[i]+bearingSteps[i]+randomInt(-1,1),0,360);if(i>0&&bearings[i]<=bearings[i-1]+8)bearings[i]=clamp(bearings[i-1]+randomInt(10,16),0,360);distances[i]=clamp(distances[i]+distanceSteps[i]+randomInt(-5,5),50,300);if(distances[i]===50||distances[i]===300)distanceSteps[i]*=-1}rows.push({plane:planeIds[i],bearing:Math.round(bearings[i]),distance:Math.round(distances[i])})}}currentIndex=0;renderRows();updateStatus();showToast(`已生成 ${rows.length} 组`)}
+const MIN_RANGE=50;
+const MAX_RANGE=300;
+const MIN_STEP_DISTANCE=8;
+const MAX_STEP_DISTANCE=18;
+const MAX_TURN_DEG=4;
+function degToRad(deg){return deg*Math.PI/180}
+function radToDeg(rad){return rad*180/Math.PI}
+function normalizeDeg(deg){return ((deg%360)+360)%360}
+function angleDiffDeg(target,current){return ((target-current+540)%360)-180}
+function turnToward(current,target,maxTurn){const diff=angleDiffDeg(target,current);return normalizeDeg(current+clamp(diff,-maxTurn,maxTurn))}
+function polarToXY(bearing,range){const rad=degToRad(bearing);return {x:Math.sin(rad)*range,y:Math.cos(rad)*range}}
+function xyToPolar(x,y){const range=Math.sqrt(x*x+y*y);return {bearing:normalizeDeg(radToDeg(Math.atan2(x,y))),range}}
+function headingVector(heading){const rad=degToRad(heading);return {x:Math.sin(rad),y:Math.cos(rad)}}
+function radialHeadingFromPosition(x,y,outward){const p=xyToPolar(x,y);return normalizeDeg(p.bearing+(outward?0:180))}
+function buildInitialBearings(){
+  const first=randomInt(8,28);
+  const gaps=Array.from({length:5},()=>randomInt(48,60));
+  const bearings=[first];
+  for(const gap of gaps)bearings.push(normalizeDeg(bearings[bearings.length-1]+gap));
+  return bearings;
+}
+function makePlaneStates(){
+  const bearings=buildInitialBearings();
+  return planeIds.map((id,index)=>{
+    const range=randomInt(125,215);
+    const pos=polarToXY(bearings[index],range);
+    const tangent=normalizeDeg(bearings[index]+(Math.random()>.5?90:-90));
+    const heading=normalizeDeg(tangent+randomInt(-18,18));
+    return {id,x:pos.x,y:pos.y,stepDistance:randomInt(MIN_STEP_DISTANCE,MAX_STEP_DISTANCE),heading,targetHeading:heading,stepsToRetarget:randomInt(4,8)};
+  });
+}
+function retargetPlane(plane){
+  const p=xyToPolar(plane.x,plane.y);
+  if(p.range>230)return radialHeadingFromPosition(plane.x,plane.y,false);
+  if(p.range<120)return radialHeadingFromPosition(plane.x,plane.y,true);
+  if(plane.stepsToRetarget<=0){
+    plane.stepsToRetarget=randomInt(4,9);
+    return normalizeDeg(plane.targetHeading+randomInt(-12,12));
+  }
+  plane.stepsToRetarget-=1;
+  return plane.targetHeading;
+}
+function movePlane(plane){
+  plane.targetHeading=retargetPlane(plane);
+  plane.heading=turnToward(plane.heading,plane.targetHeading,MAX_TURN_DEG);
+  let v=headingVector(plane.heading);
+  let nextX=plane.x+v.x*plane.stepDistance;
+  let nextY=plane.y+v.y*plane.stepDistance;
+  let next=xyToPolar(nextX,nextY);
+  if(next.range<MIN_RANGE||next.range>MAX_RANGE){
+    plane.heading=radialHeadingFromPosition(plane.x,plane.y,next.range<MIN_RANGE);
+    plane.targetHeading=plane.heading;
+    v=headingVector(plane.heading);
+    nextX=plane.x+v.x*plane.stepDistance;
+    nextY=plane.y+v.y*plane.stepDistance;
+    next=xyToPolar(nextX,nextY);
+  }
+  if(next.range<MIN_RANGE||next.range>MAX_RANGE){
+    const safe=clamp(next.range,MIN_RANGE+1,MAX_RANGE-1);
+    const projected=polarToXY(next.bearing,safe);
+    nextX=projected.x;
+    nextY=projected.y;
+    next=xyToPolar(nextX,nextY);
+  }
+  plane.x=nextX;
+  plane.y=nextY;
+  return {plane:plane.id,bearing:Math.round(next.bearing),distance:Math.round(next.range)};
+}
+function generateData(){
+  stopPlayback(false);
+  const requested=Number(els.countInput.value)||120;
+  const total=Math.max(6,Math.round(requested/6)*6);
+  els.countInput.value=total;
+  const rounds=total/6;
+  const planes=makePlaneStates();
+  rows=[];
+  for(let round=0;round<rounds;round++){
+    for(const plane of planes){
+      rows.push(movePlane(plane));
+    }
+  }
+  currentIndex=0;
+  renderRows();
+  updateStatus();
+  showToast(`已生成 ${rows.length} 组`);
+}
 function formatRow(row){return `${row.plane} ${pad3(row.bearing)} ${pad3(row.distance)}`}
 function renderRows(){els.dataList.innerHTML=rows.map((row,index)=>`<div class="row" data-index="${index}"><span>${row.plane}</span><span>${pad3(row.bearing)}</span><span>${pad3(row.distance)}</span></div>`).join("");els.summaryText.textContent=`${rows.length} 组 · ${rows.length/6} 轮`}
 function getIntervalMs(){return clamp(Number(els.intervalInput.value)||3.0,0.5,10)*1000}
