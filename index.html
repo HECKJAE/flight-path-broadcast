@@ -3,56 +3,223 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>&#26041;&#20301;&#22280;&#39134;&#34892;&#36335;&#24452;&#25773;&#25253;&#22120;</title>
+  <title>方位圈飞行路径播报器</title>
   <style>
-    :root{--bg:#f4f7f8;--panel:#fff;--ink:#162024;--muted:#63737a;--line:#d7e0e4;--accent:#176b87;--active:#fff1b8;--danger:#b3261e}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif}main{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:24px 0 36px}header{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:18px}h1{margin:0 0 6px;font-size:28px;line-height:1.2;letter-spacing:0}.sub{margin:0;color:var(--muted);font-size:14px}.layout{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:start}.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(25,43,51,.08)}.controls{padding:16px;position:sticky;top:16px}.field{display:grid;gap:7px;margin-bottom:14px}label{font-size:13px;color:var(--muted)}input,select{width:100%;border:1px solid var(--line);border-radius:6px;padding:10px 11px;font:inherit;background:#fff;color:var(--ink)}.button-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}button{border:0;border-radius:6px;padding:11px 12px;font:inherit;font-weight:700;cursor:pointer;background:#e8eef1;color:var(--ink)}button.primary{background:var(--accent);color:#fff}button.danger{background:#f7dfdc;color:var(--danger)}button:disabled{cursor:not-allowed;opacity:.55}.status{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}.metric{border:1px solid var(--line);border-radius:8px;padding:10px;background:#fbfcfd}.metric b{display:block;font-size:21px;line-height:1.1;margin-bottom:3px}.metric span{color:var(--muted);font-size:12px}.now{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}.now-output{font-family:Consolas,"Microsoft YaHei",monospace;font-size:28px;font-weight:800;line-height:1.2;min-height:38px}.hint{color:var(--muted);font-size:12px;line-height:1.6;margin:10px 0 0}.table-panel{overflow:hidden}.toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);background:#fbfcfd}.toolbar strong{font-size:15px}.data-list{max-height:calc(100vh - 160px);overflow:auto;padding:8px}.row{display:grid;grid-template-columns:52px 72px 72px;gap:12px;align-items:center;min-height:38px;padding:6px 9px;border-radius:6px;font-family:Consolas,"Microsoft YaHei",monospace;font-size:17px;border:1px solid transparent}.row:nth-child(6n){margin-bottom:8px}.row.active{background:var(--active);border-color:#e0bd3c}.row.done{color:var(--muted)}.toast{min-height:20px;margin-top:10px;color:#2f7d32;font-size:13px}@media(max-width:840px){main{width:min(100% - 20px,680px);padding-top:14px}header{display:block}.layout{grid-template-columns:1fr}.controls{position:static}.data-list{max-height:none}.row{grid-template-columns:44px 60px 60px;gap:8px;font-size:16px}}
+    :root{--bg:#0d0f12;--panel:#171a1f;--panel-2:#1d2127;--ink:#eef3f7;--muted:#93a0aa;--line:#2b3139;--accent:#1d84a6;--accent-2:#2a9dc1;--active:#2b3642;--danger:#6e2d2d;--danger-ink:#ff948f}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif}
+    main{width:min(1180px,calc(100% - 24px));margin:0 auto;padding:18px 0 28px}
+    header{margin-bottom:14px}
+    h1{margin:0;font-size:clamp(28px,5vw,56px);line-height:1.05;letter-spacing:0}
+    .sub{margin:8px 0 0;color:var(--muted);font-size:14px}
+    .layout{display:grid;gap:14px}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.24)}
+    .controls{padding:14px}
+    .controls-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .field{display:grid;gap:7px}
+    .field.wide{grid-column:span 2}
+    label{font-size:13px;color:var(--muted)}
+    input,select{width:100%;border:1px solid var(--line);border-radius:6px;padding:12px 13px;font:inherit;background:#121519;color:var(--ink)}
+    input[type="range"]{padding:0;height:42px}
+    .actions{display:grid;grid-template-columns:240px minmax(0,1fr);gap:12px;margin-top:12px;align-items:start}
+    .buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .buttons .primary{grid-column:span 2}
+    button{border:0;border-radius:6px;padding:13px 12px;font:inherit;font-weight:700;cursor:pointer;background:#242930;color:var(--ink)}
+    button.primary{background:var(--accent);color:#fff}
+    button.primary:hover{background:var(--accent-2)}
+    button.danger{background:var(--danger);color:var(--danger-ink)}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .right-stack{display:grid;gap:10px}
+    .status{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+    .metric{border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--panel-2)}
+    .metric b{display:block;font-size:20px;line-height:1.1;margin-bottom:4px}
+    .metric span{font-size:12px;color:var(--muted)}
+    .now{border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--panel-2)}
+    .now-output{font-family:Consolas,"Microsoft YaHei",monospace;font-size:clamp(24px,4vw,34px);font-weight:800;line-height:1.2;min-height:42px}
+    .hint{margin:10px 0 0;color:var(--muted);font-size:12px;line-height:1.6}
+    .toast{min-height:18px;margin-top:10px;color:#8de39e;font-size:13px}
+    .table-panel{overflow:hidden}
+    .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--panel-2)}
+    .toolbar strong{font-size:15px}
+    .toolbar span{font-size:13px;color:var(--muted)}
+    .data-list{height:360px;overflow:auto;padding:10px}
+    .row{display:grid;grid-template-columns:56px 78px 78px;gap:10px;align-items:center;min-height:42px;padding:7px 10px;border-radius:6px;border:1px solid transparent;font-family:Consolas,"Microsoft YaHei",monospace;font-size:18px}
+    .row:nth-child(6n){margin-bottom:8px}
+    .row.active{background:var(--active);border-color:#5e7ea3}
+    .row.done{color:#7a8792}
+    @media(max-width:960px){.controls-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.field.wide{grid-column:span 2}.actions{grid-template-columns:1fr}.status{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:640px){main{width:min(100% - 16px,760px);padding-top:12px}.controls-grid{grid-template-columns:1fr}.field.wide{grid-column:auto}.buttons{grid-template-columns:1fr 1fr}.status{grid-template-columns:1fr 1fr}.data-list{height:300px}.row{grid-template-columns:48px 68px 68px;font-size:16px;gap:8px}}
   </style>
 </head>
 <body>
   <main>
-    <header><div><h1>&#26041;&#20301;&#22280;&#39134;&#34892;&#36335;&#24452;&#25773;&#25253;&#22120;</h1><p class="sub">&#20869;&#32622; MP3 &#38899;&#39057;&#65292;&#25353; 12 &#32452;/&#20998;&#38047;&#36880;&#20301;&#25773;&#25253;&#12290;</p></div></header>
+    <header>
+      <h1>方位圈飞行路径播报器</h1>
+      <p class="sub">内置 WAV 数字音频。控制区集中在顶部，下方固定窗口轮换显示数字组。</p>
+    </header>
+
     <section class="layout">
-      <aside class="panel controls">
-        <div class="field"><label for="countInput">&#29983;&#25104;&#32452;&#25968;</label><input id="countInput" type="number" min="6" max="600" step="6" value="120"></div>
-        <div class="field"><label for="rateInput">&#27599;&#20998;&#38047;&#25773;&#25253;&#32452;&#25968;</label><input id="rateInput" type="number" min="1" max="60" step="1" value="12"></div>
-        <div class="field"><label for="modeSelect">&#25773;&#25253;&#26041;&#24335;</label><select id="modeSelect"><option value="mp3">MP3 &#20869;&#32622;&#38899;&#39057;</option><option value="speech">&#27983;&#35272;&#22120;&#35821;&#38899;&#22791;&#29992;</option></select></div>
-        <div class="field"><label for="voiceSelect">&#22791;&#29992;&#35821;&#38899;</label><select id="voiceSelect"></select></div>
-        <div class="field"><label for="speedInput">&#22791;&#29992;&#35821;&#36895;</label><input id="speedInput" type="range" min="0.7" max="1.3" step="0.05" value="0.95"></div>
-        <button id="generateBtn" class="primary" type="button">&#37325;&#26032;&#29983;&#25104;</button>
-        <div class="button-row"><button id="playBtn" type="button">&#25773;&#25918;</button><button id="pauseBtn" type="button" disabled>&#26242;&#20572;</button><button id="stopBtn" class="danger" type="button" disabled>&#20572;&#27490;</button><button id="copyBtn" type="button">&#22797;&#21046;&#25968;&#25454;</button></div>
-        <div class="status"><div class="metric"><b id="progressText">0/120</b><span>&#25773;&#25253;&#36827;&#24230;</span></div><div class="metric"><b id="paceText">5.0s</b><span>&#27599;&#32452;&#38388;&#38548;</span></div></div>
-        <div class="now"><label>&#24403;&#21069;&#25773;&#25253;</label><div id="nowOutput" class="now-output">-- --- ---</div><p class="hint">&#40664;&#35748;&#20351;&#29992;&#20869;&#32622; MP3&#65306;&#27934;&#12289;&#24186;&#12289;&#20004;&#12289;&#21441;&#12289;&#32902;&#12289;&#20237;&#12289;&#20845;&#12289;&#25348;&#12289;&#25420;&#12289;&#21246;&#12290;&#27599;&#32452;&#20869;&#30701;&#20572;&#39039;&#65292;&#32452;&#38388;&#25353;&#33410;&#22863;&#34917;&#36275;&#31561;&#24453;&#12290;</p><div id="toast" class="toast" role="status" aria-live="polite"></div></div>
-      </aside>
-      <section class="panel table-panel"><div class="toolbar"><strong>&#36335;&#24452;&#25968;&#25454;</strong><span id="summaryText" class="sub"></span></div><div id="dataList" class="data-list" aria-live="polite"></div></section>
+      <section class="panel controls">
+        <div class="controls-grid">
+          <div class="field"><label for="countInput">生成组数</label><input id="countInput" type="number" min="6" max="600" step="6" value="120"></div>
+          <div class="field"><label for="rateInput">每分钟播报组数</label><input id="rateInput" type="number" min="1" max="60" step="1" value="12"></div>
+          <div class="field"><label for="gapInput">组间隔附加值 (ms)</label><input id="gapInput" type="number" min="0" max="10000" step="50" value="0"></div>
+          <div class="field"><label for="modeSelect">播报方式</label><select id="modeSelect"><option value="mp3">WAV 内置音频</option></select></div>
+          <div class="field wide"><label for="voiceSelect">备用语音</label><select id="voiceSelect"></select></div>
+          <div class="field wide"><label for="speedInput">备用语速</label><input id="speedInput" type="range" min="0.7" max="1.3" step="0.05" value="1.05"></div>
+        </div>
+
+        <div class="actions">
+          <div class="buttons">
+            <button id="generateBtn" class="primary" type="button">重新生成</button>
+            <button id="playBtn" type="button">播放</button>
+            <button id="pauseBtn" type="button" disabled>暂停</button>
+            <button id="stopBtn" class="danger" type="button" disabled>停止</button>
+            <button id="copyBtn" type="button">复制数据</button>
+          </div>
+
+          <div class="right-stack">
+            <div class="status">
+              <div class="metric"><b id="progressText">0/120</b><span>播报进度</span></div>
+              <div class="metric"><b id="paceText">5.0s</b><span>每组间隔</span></div>
+              <div class="metric"><b id="modeText">WAV</b><span>当前模式</span></div>
+              <div class="metric"><b id="windowText">固定窗</b><span>数字显示</span></div>
+            </div>
+            <div class="now">
+              <label>当前播报</label>
+              <div id="nowOutput" class="now-output">-- --- ---</div>
+              <p class="hint">播报形式：01 056 156 会按“洞幺 / 洞伍六 / 幺伍六”三段播报。组间隔可以单独调大。</p>
+              <div id="toast" class="toast" role="status" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel table-panel">
+        <div class="toolbar"><strong>路径数据</strong><span id="summaryText"></span></div>
+        <div id="dataList" class="data-list" aria-live="polite"></div>
+      </section>
     </section>
   </main>
+
 <script>
 const planeIds=["01","02","03","41","42","43"];
-const digitWords={"0":"\u6d1e","1":"\u5e7a","2":"\u4e24","3":"\u53c1","4":"\u8086","5":"\u4f0d","6":"\u516d","7":"\u62d0","8":"\u634c","9":"\u52fe"};
+const digitWords={"0":"洞","1":"幺","2":"两","3":"叁","4":"肆","5":"伍","6":"六","7":"拐","8":"捌","9":"勾"};
 const digitAudio={};
-const els={countInput:document.getElementById("countInput"),rateInput:document.getElementById("rateInput"),modeSelect:document.getElementById("modeSelect"),voiceSelect:document.getElementById("voiceSelect"),speedInput:document.getElementById("speedInput"),generateBtn:document.getElementById("generateBtn"),playBtn:document.getElementById("playBtn"),pauseBtn:document.getElementById("pauseBtn"),stopBtn:document.getElementById("stopBtn"),copyBtn:document.getElementById("copyBtn"),progressText:document.getElementById("progressText"),paceText:document.getElementById("paceText"),nowOutput:document.getElementById("nowOutput"),toast:document.getElementById("toast"),dataList:document.getElementById("dataList"),summaryText:document.getElementById("summaryText")};
+let audioCtx=null,audioBuffers={},activeSources=[];
+const els={countInput:document.getElementById("countInput"),rateInput:document.getElementById("rateInput"),gapInput:document.getElementById("gapInput"),modeSelect:document.getElementById("modeSelect"),voiceSelect:document.getElementById("voiceSelect"),speedInput:document.getElementById("speedInput"),generateBtn:document.getElementById("generateBtn"),playBtn:document.getElementById("playBtn"),pauseBtn:document.getElementById("pauseBtn"),stopBtn:document.getElementById("stopBtn"),copyBtn:document.getElementById("copyBtn"),progressText:document.getElementById("progressText"),paceText:document.getElementById("paceText"),modeText:document.getElementById("modeText"),windowText:document.getElementById("windowText"),nowOutput:document.getElementById("nowOutput"),toast:document.getElementById("toast"),dataList:document.getElementById("dataList"),summaryText:document.getElementById("summaryText")};
 let rows=[],voices=[],currentIndex=0,playing=false,paused=false,timerId=0,lastActive=null,currentAudio=null;
-function pad3(v){return String(Math.round(v)).padStart(3,"0")}function clamp(v,min,max){return Math.max(min,Math.min(max,v))}function randomInt(min,max){return Math.floor(Math.random()*(max-min+1))+min}function sleep(ms){return new Promise(r=>{timerId=window.setTimeout(r,ms)})}
+function pad3(v){return String(Math.round(v)).padStart(3,"0")}
+function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function randomInt(min,max){return Math.floor(Math.random()*(max-min+1))+min}
+function sleep(ms){return new Promise(r=>{timerId=window.setTimeout(r,ms)})}
 function buildInitialBearings(){const first=randomInt(5,24);const gaps=Array.from({length:5},()=>randomInt(48,60));const bearings=[first];for(const gap of gaps)bearings.push(bearings[bearings.length-1]+gap);return bearings}
-function generateData(){stopPlayback(false);const requested=Number(els.countInput.value)||120;const total=Math.max(6,Math.round(requested/6)*6);els.countInput.value=total;const rounds=total/6;const bearings=buildInitialBearings();const distances=Array.from({length:6},()=>randomInt(50,300));const bearingDrift=randomInt(-4,4)||3;const bearingSteps=Array.from({length:6},()=>bearingDrift+randomInt(-1,1));const distanceSteps=Array.from({length:6},()=>{const direction=Math.random()>.5?1:-1;return direction*randomInt(6,17)});rows=[];for(let round=0;round<rounds;round++){for(let i=0;i<6;i++){if(round>0){bearings[i]=clamp(bearings[i]+bearingSteps[i]+randomInt(-1,1),0,360);if(i>0&&bearings[i]<=bearings[i-1]+8)bearings[i]=clamp(bearings[i-1]+randomInt(10,16),0,360);distances[i]=clamp(distances[i]+distanceSteps[i]+randomInt(-5,5),50,300);if(distances[i]===50||distances[i]===300)distanceSteps[i]*=-1}rows.push({plane:planeIds[i],bearing:Math.round(bearings[i]),distance:Math.round(distances[i])})}}currentIndex=0;renderRows();updateStatus();showToast("\u5df2\u751f\u6210 "+rows.length+" \u7ec4")}
+function generateData(){stopPlayback(false);const requested=Number(els.countInput.value)||120;const total=Math.max(6,Math.round(requested/6)*6);els.countInput.value=total;const rounds=total/6;const bearings=buildInitialBearings();const distances=Array.from({length:6},()=>randomInt(50,300));const bearingDrift=randomInt(-4,4)||3;const bearingSteps=Array.from({length:6},()=>bearingDrift+randomInt(-1,1));const distanceSteps=Array.from({length:6},()=>{const direction=Math.random()>.5?1:-1;return direction*randomInt(6,17)});rows=[];for(let round=0;round<rounds;round++){for(let i=0;i<6;i++){if(round>0){bearings[i]=clamp(bearings[i]+bearingSteps[i]+randomInt(-1,1),0,360);if(i>0&&bearings[i]<=bearings[i-1]+8)bearings[i]=clamp(bearings[i-1]+randomInt(10,16),0,360);distances[i]=clamp(distances[i]+distanceSteps[i]+randomInt(-5,5),50,300);if(distances[i]===50||distances[i]===300)distanceSteps[i]*=-1}rows.push({plane:planeIds[i],bearing:Math.round(bearings[i]),distance:Math.round(distances[i])})}}currentIndex=0;renderRows();updateStatus();showToast(`已生成 ${rows.length} 组`)}
 function formatRow(row){return `${row.plane} ${pad3(row.bearing)} ${pad3(row.distance)}`}
-function renderRows(){els.dataList.innerHTML=rows.map((row,index)=>`<div class="row" data-index="${index}"><span>${row.plane}</span><span>${pad3(row.bearing)}</span><span>${pad3(row.distance)}</span></div>`).join("");els.summaryText.textContent=`${rows.length} \u7ec4\uFF0C${rows.length/6} \u8f6e`}
-function digitsToSpeech(text){return text.replace(/\d/g,d=>`${digitWords[d]} `).trim()}function rowSpeech(row){return [digitsToSpeech(row.plane),digitsToSpeech(pad3(row.bearing)),digitsToSpeech(pad3(row.distance))].join("\uFF0C ")}
-function getIntervalMs(){const perMinute=clamp(Number(els.rateInput.value)||12,1,60);return 60000/perMinute}function getSelectedVoice(){const selected=els.voiceSelect.value;return voices.find(v=>v.name===selected)||voices.find(v=>v.lang.startsWith("zh"))||null}
-function initAudio(){for(const d of Object.keys(digitWords)){if(!digitAudio[d]){const a=new Audio(`audio/${d}.mp3`);a.preload="auto";digitAudio[d]=a}}}
-async function playAudioDigit(d){const a=digitAudio[d];if(!a)throw new Error("missing audio");if(currentAudio){currentAudio.pause();currentAudio.currentTime=0}currentAudio=a;a.currentTime=0;await a.play();await new Promise((resolve,reject)=>{a.onended=resolve;a.onerror=reject})}
-async function speakMp3(row){initAudio();const parts=[row.plane,pad3(row.bearing),pad3(row.distance)];for(let p=0;p<parts.length;p++){for(const d of parts[p]){if(!playing||paused)return;await playAudioDigit(d);await sleep(55)}if(p<parts.length-1)await sleep(170)}}
-function speakBrowser(text){return new Promise(resolve=>{if(!("speechSynthesis" in window)){resolve();return}const u=new SpeechSynthesisUtterance(text);const voice=getSelectedVoice();if(voice)u.voice=voice;u.lang=voice?voice.lang:"zh-CN";u.rate=Number(els.speedInput.value)||.95;u.pitch=1;u.onend=resolve;u.onerror=resolve;window.speechSynthesis.speak(u)})}
-async function speakRow(row){if(els.modeSelect.value==="speech")return speakBrowser(rowSpeech(row));try{return await speakMp3(row)}catch(e){showToast("MP3 \u64ad\u653e\u5931\u8d25\uFF0C\u5df2\u5207\u6362\u5230\u6d4f\u89c8\u5668\u8bed\u97f3");return speakBrowser(rowSpeech(row))}}
-async function playLoop(){if(!playing||paused)return;if(currentIndex>=rows.length){stopPlayback(true);showToast("\u64ad\u62a5\u5b8c\u6210");return}const startedAt=performance.now();const row=rows[currentIndex];setActive(currentIndex);els.nowOutput.textContent=formatRow(row);updateStatus();await speakRow(row);if(!playing||paused)return;currentIndex+=1;updateStatus();const wait=Math.max(250,getIntervalMs()-(performance.now()-startedAt));timerId=window.setTimeout(playLoop,wait)}
-function setActive(index){if(lastActive){lastActive.classList.remove("active");lastActive.classList.add("done")}const node=els.dataList.querySelector(`[data-index="${index}"]`);if(node){node.classList.add("active");node.classList.remove("done");node.scrollIntoView({block:"center",behavior:"smooth"})}lastActive=node}
-function updateStatus(){els.progressText.textContent=`${Math.min(currentIndex,rows.length)}/${rows.length}`;els.paceText.textContent=`${(getIntervalMs()/1000).toFixed(1)}s`;els.playBtn.disabled=playing&&!paused;els.pauseBtn.disabled=!playing;els.stopBtn.disabled=!playing&&currentIndex===0;els.pauseBtn.textContent=paused?"\u7ee7\u7eed":"\u6682\u505c"}
-function cancelAudio(){if(currentAudio){currentAudio.pause();currentAudio.currentTime=0;currentAudio=null}if("speechSynthesis" in window)window.speechSynthesis.cancel()}
-function startPlayback(){if(!rows.length)generateData();cancelAudio();initAudio();playing=true;paused=false;showToast("");updateStatus();playLoop()}function togglePause(){if(!playing)return;if(paused){paused=false;updateStatus();playLoop()}else{paused=true;window.clearTimeout(timerId);cancelAudio();updateStatus()}}
+function renderRows(){els.dataList.innerHTML=rows.map((row,index)=>`<div class="row" data-index="${index}"><span>${row.plane}</span><span>${pad3(row.bearing)}</span><span>${pad3(row.distance)}</span></div>`).join("");els.summaryText.textContent=`${rows.length} 组，${rows.length/6} 轮`}
+function digitsToSpeech(text){return text.replace(/\d/g,d=>digitWords[d])}
+function rowSpeech(row){return [digitsToSpeech(row.plane),digitsToSpeech(pad3(row.bearing)),digitsToSpeech(pad3(row.distance))].join("， ")}
+function getBaseIntervalMs(){const perMinute=clamp(Number(els.rateInput.value)||12,1,60);return 60000/perMinute}
+function getExtraGapMs(){return clamp(Number(els.gapInput.value)||0,0,10000)}
+function getIntervalMs(){return getBaseIntervalMs()+getExtraGapMs()}
+function getSelectedVoice(){const selected=els.voiceSelect.value;return voices.find(v=>v.name===selected)||voices.find(v=>v.lang.startsWith("zh"))||null}
+function initAudio(){for(const d of Object.keys(digitWords)){if(!digitAudio[d])digitAudio[d]=`audio/${d}.wav`}}
+async function ensureAudioBuffers(){
+  initAudio();
+  if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==="suspended")await audioCtx.resume();
+  const missing=Object.keys(digitWords).filter(d=>!audioBuffers[d]);
+  await Promise.all(missing.map(async d=>{
+    const res=await fetch(digitAudio[d],{cache:"reload"});
+    const data=await res.arrayBuffer();
+    audioBuffers[d]=await audioCtx.decodeAudioData(data);
+  }));
+}
+function stopActiveSources(){
+  activeSources.forEach(src=>{try{src.stop(0)}catch{}});
+  activeSources=[];
+}
+function makeSilenceBuffer(seconds){
+  const length=Math.max(1,Math.round(audioCtx.sampleRate*seconds));
+  return audioCtx.createBuffer(1,length,audioCtx.sampleRate);
+}
+function concatBuffers(buffers){
+  const channels=1;
+  const totalLength=buffers.reduce((sum,b)=>sum+b.length,0);
+  const output=audioCtx.createBuffer(channels,totalLength,audioCtx.sampleRate);
+  let offset=0;
+  for(const buffer of buffers){
+    const source=buffer.getChannelData(0);
+    output.getChannelData(0).set(source,offset);
+    offset+=buffer.length;
+  }
+  return output;
+}
+function buildRowBuffer(row){
+  const parts=[row.plane,pad3(row.bearing),pad3(row.distance)];
+  const chunks=[];
+  const digitGap=makeSilenceBuffer(0.07);
+  const partGap=makeSilenceBuffer(0.20);
+  for(let p=0;p<parts.length;p++){
+    for(let i=0;i<parts[p].length;i++){
+      chunks.push(audioBuffers[parts[p][i]]);
+      if(i<parts[p].length-1)chunks.push(digitGap);
+    }
+    if(p<parts.length-1)chunks.push(partGap);
+  }
+  return concatBuffers(chunks);
+}
+async function playOneBuffer(buffer){
+  stopActiveSources();
+  const src=audioCtx.createBufferSource();
+  src.buffer=buffer;
+  src.connect(audioCtx.destination);
+  activeSources=[src];
+  await new Promise(resolve=>{
+    src.onended=resolve;
+    src.start();
+  });
+  activeSources=[];
+}
+async function speakMp3(row){
+  if("speechSynthesis" in window)window.speechSynthesis.cancel();
+  await ensureAudioBuffers();
+  if(!playing||paused)return;
+  const rowBuffer=buildRowBuffer(row);
+  await playOneBuffer(rowBuffer);
+}
+function speakBrowser(text){return new Promise(resolve=>{if(currentAudio){currentAudio.pause();currentAudio.src="";currentAudio.load();currentAudio=null}if(!("speechSynthesis" in window)){resolve();return}window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);const voice=getSelectedVoice();if(voice)u.voice=voice;u.lang=voice?voice.lang:"zh-CN";u.rate=Number(els.speedInput.value)||1.05;u.pitch=1;u.onend=resolve;u.onerror=resolve;window.speechSynthesis.speak(u)})}
+async function speakRow(row){if("speechSynthesis" in window)window.speechSynthesis.cancel();try{return await speakMp3(row)}catch(e){showToast("WAV 播放失败：请刷新页面后再点播放");console.error(e);stopPlayback(false)}}
+async function playLoop(){if(!playing||paused)return;if(currentIndex>=rows.length){stopPlayback(true);showToast("播报完成");return}const startedAt=performance.now();const row=rows[currentIndex];setActive(currentIndex);els.nowOutput.textContent=formatRow(row);updateStatus();await speakRow(row);if(!playing||paused)return;currentIndex+=1;updateStatus();const wait=Math.max(120,getIntervalMs()-(performance.now()-startedAt));timerId=window.setTimeout(playLoop,wait)}
+function setActive(index){if(lastActive){lastActive.classList.remove("active");lastActive.classList.add("done")}const node=els.dataList.querySelector(`[data-index="${index}"]`);if(node){node.classList.add("active");node.classList.remove("done");const top=Math.max(0,node.offsetTop-(els.dataList.clientHeight/2)+(node.offsetHeight/2));els.dataList.scrollTo({top,behavior:"smooth"})}lastActive=node}
+function updateStatus(){els.progressText.textContent=`${Math.min(currentIndex,rows.length)}/${rows.length}`;els.paceText.textContent=`${(getIntervalMs()/1000).toFixed(1)}s`;els.modeText.textContent="WAV";els.windowText.textContent="固定窗";els.playBtn.disabled=playing&&!paused;els.pauseBtn.disabled=!playing;els.stopBtn.disabled=!playing&&currentIndex===0;els.pauseBtn.textContent=paused?"继续":"暂停"}
+function cancelAudio(){stopActiveSources();if(currentAudio){currentAudio.pause();currentAudio.src="";currentAudio.load();currentAudio=null}if("speechSynthesis" in window)window.speechSynthesis.cancel()}
+function startPlayback(){if(!rows.length)generateData();cancelAudio();initAudio();playing=true;paused=false;showToast("");updateStatus();playLoop()}
+function togglePause(){if(!playing)return;if(paused){paused=false;updateStatus();playLoop()}else{paused=true;window.clearTimeout(timerId);cancelAudio();updateStatus()}}
 function stopPlayback(completed){playing=false;paused=false;window.clearTimeout(timerId);cancelAudio();if(!completed)currentIndex=0;if(lastActive)lastActive.classList.remove("active");lastActive=null;els.nowOutput.textContent="-- --- ---";updateStatus()}
-async function copyData(){const text=rows.map(formatRow).join("\n");try{await navigator.clipboard.writeText(text);showToast("\u6570\u636e\u5df2\u590d\u5236")}catch{const area=document.createElement("textarea");area.value=text;document.body.appendChild(area);area.select();document.execCommand("copy");area.remove();showToast("\u6570\u636e\u5df2\u590d\u5236")}}
-function showToast(msg){els.toast.textContent=msg}function loadVoices(){if(!("speechSynthesis" in window)){els.voiceSelect.innerHTML="<option>\u5f53\u524d\u6d4f\u89c8\u5668\u4e0d\u652f\u6301\u8bed\u97f3\u64ad\u62a5</option>";return}voices=window.speechSynthesis.getVoices();const zh=voices.filter(v=>v.lang.toLowerCase().startsWith("zh"));const choices=zh.length?zh:voices;els.voiceSelect.innerHTML=choices.map(v=>`<option value="${v.name}">${v.name} (${v.lang})</option>`).join("")}
-els.generateBtn.addEventListener("click",generateData);els.playBtn.addEventListener("click",startPlayback);els.pauseBtn.addEventListener("click",togglePause);els.stopBtn.addEventListener("click",()=>stopPlayback(false));els.copyBtn.addEventListener("click",copyData);els.rateInput.addEventListener("input",updateStatus);loadVoices();initAudio();if("speechSynthesis" in window)window.speechSynthesis.onvoiceschanged=loadVoices;generateData();
+async function copyData(){const text=rows.map(formatRow).join("\n");try{await navigator.clipboard.writeText(text);showToast("数据已复制")}catch{const area=document.createElement("textarea");area.value=text;document.body.appendChild(area);area.select();document.execCommand("copy");area.remove();showToast("数据已复制")}}
+function showToast(msg){els.toast.textContent=msg}
+function loadVoices(){if(!("speechSynthesis" in window)){els.voiceSelect.innerHTML="<option>当前浏览器不支持语音播报</option>";return}voices=window.speechSynthesis.getVoices();const zh=voices.filter(v=>v.lang.toLowerCase().startsWith("zh"));const choices=zh.length?zh:voices;els.voiceSelect.innerHTML=choices.map(v=>`<option value="${v.name}">${v.name} (${v.lang})</option>`).join("")}
+els.generateBtn.addEventListener("click",generateData);
+els.playBtn.addEventListener("click",startPlayback);
+els.pauseBtn.addEventListener("click",togglePause);
+els.stopBtn.addEventListener("click",()=>stopPlayback(false));
+els.copyBtn.addEventListener("click",copyData);
+els.rateInput.addEventListener("input",updateStatus);
+els.gapInput.addEventListener("input",updateStatus);
+els.modeSelect.addEventListener("change",()=>{cancelAudio();updateStatus();showToast("已切换播报方式")});
+if("speechSynthesis" in window)window.speechSynthesis.cancel();
+loadVoices();
+initAudio();
+if("speechSynthesis" in window)window.speechSynthesis.onvoiceschanged=loadVoices;
+generateData();
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
