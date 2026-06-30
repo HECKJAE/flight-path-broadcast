@@ -151,8 +151,9 @@
     .controls-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .field{display:flex;flex-direction:column;gap:6px}
     .field.full{grid-column:1/-1}
-    label{font-size:13px;color:var(--ink-dim);font-weight:500;display:flex;justify-content:space-between;align-items:center}
+    label{font-size:13px;color:var(--ink-dim);font-weight:500;display:flex;justify-content:space-between;align-items:center;gap:8px}
     label .val{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
+    label .hint{color:var(--ink-mute);font-weight:400;font-size:12px;margin-left:auto}
     input[type="number"],select{
       width:100%;border:1px solid var(--line);border-radius:var(--radius-sm);
       padding:12px 14px;font:inherit;font-size:16px;
@@ -182,9 +183,8 @@
     input[type="range"]::-moz-range-track{height:6px;border-radius:3px;background:var(--panel-3);border:none}
     input[type="range"]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--accent);border:3px solid var(--panel);box-shadow:0 0 8px var(--accent-glow)}
     /* Buttons */
-    .btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
     .btn-play{grid-column:1/-1;padding:16px;font-size:17px}
-    .btn-row{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
     button{
       border:0;border-radius:var(--radius-sm);padding:13px 12px;
       font:inherit;font-size:15px;font-weight:700;cursor:pointer;
@@ -242,17 +242,14 @@
       .layout{gap:16px}
       .now-hero{padding:28px 24px}
       .controls{padding:18px}
-      .controls-grid{grid-template-columns:repeat(3,1fr)}
+      .controls-grid{grid-template-columns:repeat(2,1fr)}
+      .field.full{grid-column:1/-1}
       .btn-grid{grid-template-columns:2fr 1fr 1fr 1fr 1fr}
       .btn-play{grid-column:auto;padding:14px;font-size:15px}
-      .btn-row{grid-column:auto;display:contents}
       .row{grid-template-columns:60px 1fr 1fr;font-size:18px;padding:8px 14px}
       .metric{padding:12px 8px}
       .metric b{font-size:22px}
       .metric span{font-size:12px}
-    }
-    @media(min-width:640px){
-      .controls-grid .interval-field.full{grid-column:auto}
     }
     @media(max-width:380px){
       main{width:calc(100% - 16px);padding:10px 0 24px}
@@ -302,33 +299,29 @@
         <p class="section-title">参数设置</p>
         <div class="controls-grid">
           <div class="field">
-            <label for="countInput">生成组数</label>
+            <label>生成组数</label>
             <input id="countInput" type="number" min="6" max="600" step="6" value="120">
           </div>
           <div class="field">
-            <label for="rateInput">每分钟组数 <span class="val" id="rateVal">12</span></label>
-            <input id="rateInput" type="number" min="4" max="200" step="1" value="12">
-          </div>
-          <div class="field interval-field full">
-            <label for="intervalInput">组间间隔 <span class="val" id="intervalVal">5.0s</span></label>
-            <input id="intervalInput" type="range" min="0.3" max="15" step="0.1" value="5.0">
-          </div>
-          <div class="field slider-field full">
-            <label for="playbackRateInput">播报语速 <span class="val" id="playbackRateVal">1.0x</span></label>
+            <label>播报语速 <span class="val" id="playbackRateVal">1.0x</span></label>
             <input id="playbackRateInput" type="range" min="0.5" max="3.0" step="0.1" value="1.0">
+          </div>
+          <div class="field full">
+            <label>行间隔 <span class="val" id="intervalVal">3.0s</span> <span class="hint" id="rateVal">20组/分</span></label>
+            <input id="intervalInput" type="range" min="0.5" max="10" step="0.1" value="3.0">
+          </div>
+          <div class="field full">
+            <label>列停顿 <span class="val" id="colGapVal">0.10s</span></label>
+            <input id="colGapInput" type="range" min="0.0" max="1.0" step="0.05" value="0.10">
           </div>
         </div>
 
         <div class="btn-grid">
           <button id="playBtn" class="btn-primary btn-play" type="button">&#9654; 播放</button>
-          <div class="btn-row">
-            <button id="pauseBtn" class="btn-default" type="button" disabled>&#10074;&#10074; 暂停</button>
-            <button id="stopBtn" class="btn-danger" type="button" disabled>&#9632; 停止</button>
-          </div>
-          <div class="btn-row">
-            <button id="generateBtn" class="btn-default" type="button">重新生成</button>
-            <button id="copyBtn" class="btn-default" type="button">复制</button>
-          </div>
+          <button id="pauseBtn" class="btn-default" type="button" disabled>&#10074;&#10074; 暂停</button>
+          <button id="stopBtn" class="btn-danger" type="button" disabled>&#9632; 停止</button>
+          <button id="generateBtn" class="btn-default" type="button">重新生成</button>
+          <button id="copyBtn" class="btn-default" type="button">复制</button>
         </div>
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
       </section>
@@ -346,7 +339,7 @@ const planeIds=["01","02","03","41","42","43"];
 const digitWords={"0":"洞","1":"幺","2":"两","3":"叁","4":"肆","5":"伍","6":"六","7":"拐","8":"捌","9":"勾"};
 const digitAudio={};
 let audioCtx=null,audioBuffers={},activeSources=[];
-const els={countInput:document.getElementById("countInput"),rateInput:document.getElementById("rateInput"),rateVal:document.getElementById("rateVal"),intervalInput:document.getElementById("intervalInput"),intervalVal:document.getElementById("intervalVal"),playbackRateInput:document.getElementById("playbackRateInput"),playbackRateVal:document.getElementById("playbackRateVal"),generateBtn:document.getElementById("generateBtn"),playBtn:document.getElementById("playBtn"),pauseBtn:document.getElementById("pauseBtn"),stopBtn:document.getElementById("stopBtn"),copyBtn:document.getElementById("copyBtn"),progressText:document.getElementById("progressText"),paceText:document.getElementById("paceText"),rateValText:document.getElementById("rateValText"),windowText:document.getElementById("windowText"),nowOutput:document.getElementById("nowOutput"),toast:document.getElementById("toast"),dataList:document.getElementById("dataList"),summaryText:document.getElementById("summaryText"),nowPanel:document.getElementById("nowPanel")};
+const els={countInput:document.getElementById("countInput"),intervalInput:document.getElementById("intervalInput"),intervalVal:document.getElementById("intervalVal"),playbackRateInput:document.getElementById("playbackRateInput"),playbackRateVal:document.getElementById("playbackRateVal"),colGapInput:document.getElementById("colGapInput"),colGapVal:document.getElementById("colGapVal"),rateVal:document.getElementById("rateVal"),generateBtn:document.getElementById("generateBtn"),playBtn:document.getElementById("playBtn"),pauseBtn:document.getElementById("pauseBtn"),stopBtn:document.getElementById("stopBtn"),copyBtn:document.getElementById("copyBtn"),progressText:document.getElementById("progressText"),paceText:document.getElementById("paceText"),rateValText:document.getElementById("rateValText"),windowText:document.getElementById("windowText"),nowOutput:document.getElementById("nowOutput"),toast:document.getElementById("toast"),dataList:document.getElementById("dataList"),summaryText:document.getElementById("summaryText"),nowPanel:document.getElementById("nowPanel")};
 let rows=[],currentIndex=0,playing=false,paused=false,timerId=0,lastActive=null;
 function pad3(v){return String(Math.round(v)).padStart(3,"0")}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
@@ -355,36 +348,45 @@ function buildInitialBearings(){const first=randomInt(5,24);const gaps=Array.fro
 function generateData(){stopPlayback(false);const requested=Number(els.countInput.value)||120;const total=Math.max(6,Math.round(requested/6)*6);els.countInput.value=total;const rounds=total/6;const bearings=buildInitialBearings();const distances=Array.from({length:6},()=>randomInt(50,300));const bearingDrift=randomInt(-4,4)||3;const bearingSteps=Array.from({length:6},()=>bearingDrift+randomInt(-1,1));const distanceSteps=Array.from({length:6},()=>{const direction=Math.random()>.5?1:-1;return direction*randomInt(6,17)});rows=[];for(let round=0;round<rounds;round++){for(let i=0;i<6;i++){if(round>0){bearings[i]=clamp(bearings[i]+bearingSteps[i]+randomInt(-1,1),0,360);if(i>0&&bearings[i]<=bearings[i-1]+8)bearings[i]=clamp(bearings[i-1]+randomInt(10,16),0,360);distances[i]=clamp(distances[i]+distanceSteps[i]+randomInt(-5,5),50,300);if(distances[i]===50||distances[i]===300)distanceSteps[i]*=-1}rows.push({plane:planeIds[i],bearing:Math.round(bearings[i]),distance:Math.round(distances[i])})}}currentIndex=0;renderRows();updateStatus();showToast(`已生成 ${rows.length} 组`)}
 function formatRow(row){return `${row.plane} ${pad3(row.bearing)} ${pad3(row.distance)}`}
 function renderRows(){els.dataList.innerHTML=rows.map((row,index)=>`<div class="row" data-index="${index}"><span>${row.plane}</span><span>${pad3(row.bearing)}</span><span>${pad3(row.distance)}</span></div>`).join("");els.summaryText.textContent=`${rows.length} 组 · ${rows.length/6} 轮`}
-function getIntervalMs(){return clamp(Number(els.intervalInput.value)||5.0,0.3,15)*1000}
+function getIntervalMs(){return clamp(Number(els.intervalInput.value)||3.0,0.5,10)*1000}
 function getPlaybackRate(){return clamp(Number(els.playbackRateInput.value)||1.0,0.5,3.0)}
-let syncing=false;
-function syncFromInterval(){
-  if(syncing)return;syncing=true;
-  const sec=clamp(Number(els.intervalInput.value)||5.0,0.3,15);
-  const perMin=Math.round(60/sec);
-  els.rateInput.value=perMin;
-  els.rateVal.textContent=perMin;
-  syncing=false;
+function getColGap(){return clamp(Number(els.colGapInput.value)||0.10,0.0,1.0)}
+function getDigitGap(){return 0}
+function updateRateDisplay(){
+  const sec=Number(els.intervalInput.value)||3.0;
+  const perMin=Math.max(1,Math.round(60/sec));
+  els.rateVal.textContent=perMin+"组/分";
 }
-function syncFromRate(){
-  if(syncing)return;syncing=true;
-  const perMin=clamp(Number(els.rateInput.value)||12,4,200);
-  const sec=clamp(Math.round(60/perMin*10)/10,0.3,15);
-  els.intervalInput.value=sec;
-  els.intervalVal.textContent=sec.toFixed(1)+"s";
-  syncing=false;
+function trimSilence(buffer,threshold=0.008){
+  const data=buffer.getChannelData(0);
+  let start=0;
+  while(start<data.length&&Math.abs(data[start])<threshold)start++;
+  let end=data.length-1;
+  while(end>start&&Math.abs(data[end])<threshold)end--;
+  const padStart=Math.floor(buffer.sampleRate*0.005);
+  const padEnd=Math.floor(buffer.sampleRate*0.01);
+  const trimStart=Math.max(0,start-padStart);
+  const trimEnd=Math.min(data.length,end+padEnd);
+  const len=trimEnd-trimStart;
+  const out=audioCtx.createBuffer(1,len,buffer.sampleRate);
+  out.getChannelData(0).set(data.subarray(trimStart,trimEnd));
+  return out;
 }
-function initAudio(){for(const d of Object.keys(digitWords)){if(!digitAudio[d])digitAudio[d]=`audio/${d}.wav`}}
+const AUDIO_VER="?v=4";
+function initAudio(){for(const d of Object.keys(digitWords)){if(!digitAudio[d])digitAudio[d]=`audio/${d}.wav${AUDIO_VER}`}}
+let audioBuffersLoaded=false;
 async function ensureAudioBuffers(){
   initAudio();
   if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
   if(audioCtx.state==="suspended")await audioCtx.resume();
-  const missing=Object.keys(digitWords).filter(d=>!audioBuffers[d]);
-  await Promise.all(missing.map(async d=>{
-    const res=await fetch(digitAudio[d],{cache:"reload"});
+  if(audioBuffersLoaded)return;
+  await Promise.all(Object.keys(digitWords).map(async d=>{
+    const res=await fetch(digitAudio[d],{cache:"no-store"});
     const data=await res.arrayBuffer();
-    audioBuffers[d]=await audioCtx.decodeAudioData(data);
+    const decoded=await audioCtx.decodeAudioData(data);
+    audioBuffers[d]=trimSilence(decoded);
   }));
+  audioBuffersLoaded=true;
 }
 function stopActiveSources(){
   activeSources.forEach(src=>{try{src.stop(0)}catch{}});
@@ -395,29 +397,25 @@ function makeSilenceBuffer(seconds){
   return audioCtx.createBuffer(1,length,audioCtx.sampleRate);
 }
 function concatBuffers(buffers){
-  const channels=1;
-  const totalLength=buffers.reduce((sum,b)=>sum+b.length,0);
-  const output=audioCtx.createBuffer(channels,totalLength,audioCtx.sampleRate);
+  const totalLength=buffers.reduce((s,b)=>s+b.length,0);
+  const output=audioCtx.createBuffer(1,Math.max(1,totalLength),audioCtx.sampleRate);
   let offset=0;
-  for(const buffer of buffers){
-    const source=buffer.getChannelData(0);
-    output.getChannelData(0).set(source,offset);
-    offset+=buffer.length;
+  for(const b of buffers){
+    output.getChannelData(0).set(b.getChannelData(0),offset);
+    offset+=b.length;
   }
   return output;
 }
 function buildRowBuffer(row){
   const parts=[row.plane,pad3(row.bearing),pad3(row.distance)];
-  const chunks=[];
   const rate=getPlaybackRate();
-  const digitGap=makeSilenceBuffer(0.07/rate);
-  const partGap=makeSilenceBuffer(0.20/rate);
+  const colGap=makeSilenceBuffer(getColGap()/rate);
+  const chunks=[];
   for(let p=0;p<parts.length;p++){
     for(let i=0;i<parts[p].length;i++){
       chunks.push(audioBuffers[parts[p][i]]);
-      if(i<parts[p].length-1)chunks.push(digitGap);
     }
-    if(p<parts.length-1)chunks.push(partGap);
+    if(p<parts.length-1)chunks.push(colGap);
   }
   return concatBuffers(chunks);
 }
@@ -457,7 +455,8 @@ async function playLoop(){
   currentIndex+=1;
   refreshRows(false);
   updateStatus();
-  const wait=Math.max(50,getIntervalMs()-(performance.now()-startedAt));
+  const elapsed=performance.now()-startedAt;
+  const wait=Math.max(50,getIntervalMs()-elapsed);
   timerId=window.setTimeout(playLoop,wait);
 }
 function refreshRows(showActive){
@@ -480,7 +479,7 @@ function refreshRows(showActive){
 }
 function updateStatus(){
   const rate=getPlaybackRate();
-  const sec=Number(els.intervalInput.value)||5.0;
+  const sec=Number(els.intervalInput.value)||3.0;
   els.progressText.textContent=`${Math.min(currentIndex,rows.length)}/${rows.length}`;
   els.paceText.textContent=`${sec.toFixed(1)}s`;
   els.rateValText.textContent=`${rate.toFixed(1)}x`;
@@ -490,8 +489,9 @@ function updateStatus(){
   els.stopBtn.disabled=!playing&&currentIndex===0;
   els.pauseBtn.innerHTML=paused?"&#9654; 继续":"&#10074;&#10074; 暂停";
   els.intervalVal.textContent=sec.toFixed(1)+"s";
-  els.rateVal.textContent=Math.round(60/sec);
   els.playbackRateVal.textContent=rate.toFixed(1)+"x";
+  els.colGapVal.textContent=(Number(els.colGapInput.value)||0.10).toFixed(2)+"s";
+  updateRateDisplay();
 }
 function cancelAudio(){
   stopActiveSources();
@@ -534,9 +534,9 @@ els.playBtn.addEventListener("click",startPlayback);
 els.pauseBtn.addEventListener("click",togglePause);
 els.stopBtn.addEventListener("click",()=>stopPlayback(false));
 els.copyBtn.addEventListener("click",copyData);
-els.intervalInput.addEventListener("input",()=>{syncFromInterval();updateStatus()});
-els.rateInput.addEventListener("input",()=>{syncFromRate();updateStatus()});
+els.intervalInput.addEventListener("input",updateStatus);
 els.playbackRateInput.addEventListener("input",updateStatus);
+els.colGapInput.addEventListener("input",updateStatus);
 generateData();
 </script>
 </body>
