@@ -277,8 +277,13 @@
     #radarSvg .ring-label{fill:#00c9a7;font-family:monospace;font-size:7px;text-anchor:middle;opacity:.25}
     #radarSvg .now-blip{stroke:#fff;stroke-width:1.5;filter:drop-shadow(0 0 3px currentColor)}
     #radarSvg .track{fill:none;stroke-width:1.2;opacity:.7}
+    #radarSvg .track[data-status="past"]{opacity:.25}
     #radarSvg .plane-dot{fill-opacity:.9}
+    #radarSvg .plane-dot[data-status="past"]{fill-opacity:.4}
     #radarSvg .plane-label{font-family:monospace;font-size:7px;font-weight:700;fill:#fff;text-anchor:start}
+    .radar-toggle{background:transparent;border:1px solid #2a3f5f;color:#8fa3bf;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700}
+    .radar-toggle:hover{color:#00c9a7;border-color:#00c9a7}
+    .radar-panel.collapsed .radar-body{display:none}
   </style>
 </head>
 <body>
@@ -314,9 +319,15 @@
       </section>
 
       <!-- Live Radar Map -->
-      <section class="panel radar-panel">
-        <div class="toolbar"><strong>实时航迹图</strong><span id="radarSummary">尚未播报</span></div>
-        <svg id="radarSvg" viewBox="-110 -110 220 220" preserveAspectRatio="xMidYMid meet" aria-label="雷达航迹图"></svg>
+      <section class="panel radar-panel" id="radarPanel">
+        <div class="toolbar">
+          <strong>实时航迹图</strong>
+          <span id="radarSummary">尚未播报</span>
+          <button id="radarToggle" class="radar-toggle" type="button" aria-label="收起/展开雷达图">▼</button>
+        </div>
+        <div class="radar-body">
+          <svg id="radarSvg" viewBox="-110 -110 220 220" preserveAspectRatio="xMidYMid meet" aria-label="雷达航迹图"></svg>
+        </div>
       </section>
 
       <!-- Controls -->
@@ -368,7 +379,7 @@ const planeIds=["01","02","03","04","05","06","07","08","41","42","43","44","45"
 const digitWords={"0":"洞","1":"幺","2":"两","3":"叁","4":"肆","5":"伍","6":"六","7":"拐","8":"捌","9":"勾"};
 const digitAudio={};
 let audioCtx=null,audioBuffers={},activeSources=[];
-const els={countInput:document.getElementById("countInput"),intervalInput:document.getElementById("intervalInput"),intervalVal:document.getElementById("intervalVal"),playbackRateInput:document.getElementById("playbackRateInput"),playbackRateVal:document.getElementById("playbackRateVal"),colGapInput:document.getElementById("colGapInput"),colGapVal:document.getElementById("colGapVal"),rateVal:document.getElementById("rateVal"),generateBtn:document.getElementById("generateBtn"),playBtn:document.getElementById("playBtn"),pauseBtn:document.getElementById("pauseBtn"),stopBtn:document.getElementById("stopBtn"),copyBtn:document.getElementById("copyBtn"),progressText:document.getElementById("progressText"),paceText:document.getElementById("paceText"),rateValText:document.getElementById("rateValText"),windowText:document.getElementById("windowText"),nowOutput:document.getElementById("nowOutput"),toast:document.getElementById("toast"),audioLoad:document.getElementById("audioLoad"),audioLoadText:document.getElementById("audioLoadText"),audioLoadBar:document.getElementById("audioLoadBar"),dataList:document.getElementById("dataList"),summaryText:document.getElementById("summaryText"),nowPanel:document.getElementById("nowPanel"),radarSvg:document.getElementById("radarSvg"),radarSummary:document.getElementById("radarSummary")};
+const els={countInput:document.getElementById("countInput"),intervalInput:document.getElementById("intervalInput"),intervalVal:document.getElementById("intervalVal"),playbackRateInput:document.getElementById("playbackRateInput"),playbackRateVal:document.getElementById("playbackRateVal"),colGapInput:document.getElementById("colGapInput"),colGapVal:document.getElementById("colGapVal"),rateVal:document.getElementById("rateVal"),generateBtn:document.getElementById("generateBtn"),playBtn:document.getElementById("playBtn"),pauseBtn:document.getElementById("pauseBtn"),stopBtn:document.getElementById("stopBtn"),copyBtn:document.getElementById("copyBtn"),progressText:document.getElementById("progressText"),paceText:document.getElementById("paceText"),rateValText:document.getElementById("rateValText"),windowText:document.getElementById("windowText"),nowOutput:document.getElementById("nowOutput"),toast:document.getElementById("toast"),audioLoad:document.getElementById("audioLoad"),audioLoadText:document.getElementById("audioLoadText"),audioLoadBar:document.getElementById("audioLoadBar"),dataList:document.getElementById("dataList"),summaryText:document.getElementById("summaryText"),nowPanel:document.getElementById("nowPanel"),radarSvg:document.getElementById("radarSvg"),radarSummary:document.getElementById("radarSummary"),radarPanel:document.getElementById("radarPanel"),radarToggle:document.getElementById("radarToggle")};
 let rows=[],currentIndex=0,playing=false,paused=false,timerId=0,lastActive=null,isStarting=false;
 function pad3(v){return String(Math.round(v)).padStart(3,"0")}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
@@ -384,6 +395,8 @@ function bearingDistanceToXY(bearing,distance){
 function initRadar(){
   const svg=els.radarSvg;
   svg.innerHTML="";
+  // 背景深色圆（手机 SVG 元素自身做背景，不依赖 CSS）— 最先画，在所有元素之下
+  svg.insertAdjacentHTML("afterbegin",`<circle cx="0" cy="0" r="115" fill="#0b1120"/>`);
   // 6 圈同心圆（每圈 50km）
   for(let i=1;i<=6;i++){
     const cls=i%2===0?"ring-major":"ring";
@@ -402,10 +415,10 @@ function initRadar(){
     const cls=deg%90===0?"spoke-major":"spoke";
     svg.insertAdjacentHTML("beforeend",`<line x1="0" y1="0" x2="${x.toFixed(2)}" y2="${y.toFixed(2)}" class="${cls}"/>`);
   }
-  // 方位标签（每 30°）
+  // 方位标签（每 30°，内挪到 +5 防裁切）
   for(let deg=0;deg<360;deg+=30){
     const rad=deg*Math.PI/180;
-    const x=Math.sin(rad)*(RADAR_RMAX+7),y=-Math.cos(rad)*(RADAR_RMAX+7);
+    const x=Math.sin(rad)*(RADAR_RMAX+5),y=-Math.cos(rad)*(RADAR_RMAX+5);
     svg.insertAdjacentHTML("beforeend",`<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" class="label">${String(deg).padStart(3,"0")}</text>`);
   }
   svg.insertAdjacentHTML("beforeend",`<circle cx="0" cy="0" r="1.5" fill="#5de8c6"/>`);
@@ -432,7 +445,14 @@ function addRadarPoint(rowIdx){
   planeTracks[planeId].push({x:xy.x,y:xy.y,rowIdx});
   const color=colorForPlane(planeId);
   const svg=els.radarSvg;
-  // 添加新点（先点）
+  // 把上一次同飞机的 dot + track 标记为历史（暗淡）
+  if(!isFirstForPlane){
+    const allDots=svg.querySelectorAll(`.plane-dot[data-plane="${planeId}"]`);
+    const allTracks=svg.querySelectorAll(`polyline.track[data-plane="${planeId}"]`);
+    allDots.forEach(d=>d.setAttribute("data-status","past"));
+    allTracks.forEach(t=>t.setAttribute("data-status","past"));
+  }
+  // 添加新点（当前）
   svg.insertAdjacentHTML("beforeend",
     `<circle cx="${xy.x.toFixed(2)}" cy="${xy.y.toFixed(2)}" r="1.6" class="plane-dot" fill="${color}" data-plane="${planeId}"/>`
   );
@@ -849,6 +869,13 @@ els.copyBtn.addEventListener("click",copyData);
 els.intervalInput.addEventListener("input",updateStatus);
 els.playbackRateInput.addEventListener("input",updateStatus);
 els.colGapInput.addEventListener("input",updateStatus);
+function toggleRadarPanel(){
+  const collapsed=els.radarPanel.classList.toggle("collapsed");
+  els.radarToggle.textContent=collapsed?"▲":"▼";
+  try{localStorage.setItem("radarCollapsed",collapsed?"1":"0")}catch{}
+}
+els.radarToggle.addEventListener("click",toggleRadarPanel);
+try{if(localStorage.getItem("radarCollapsed")==="1")toggleRadarPanel()}catch{}
 initRadar();
 generateData();
 </script>
