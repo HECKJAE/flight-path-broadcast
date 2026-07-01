@@ -357,11 +357,31 @@ const MIN_RANGE=50;
 const MAX_RANGE=300;
 const MIN_STEP_DISTANCE=15;
 const MAX_STEP_DISTANCE=20;
-const MAX_BEARING_STEP_DEG=2;
-const MAX_BEARING_ACCEL_DEG=0.45;
+const MAX_SEGMENT_TURN_DEG=10;
+const STRAIGHT_PROBABILITY=0.32;
 function degToRad(deg){return deg*Math.PI/180}
+function radToDeg(rad){return rad*180/Math.PI}
 function normalizeDeg(deg){return ((deg%360)+360)%360}
+function angleDiffDeg(target,current){return ((target-current+540)%360)-180}
+function polarToXY(bearing,range){const rad=degToRad(bearing);return {x:Math.sin(rad)*range,y:Math.cos(rad)*range}}
+function xyToPolar(x,y){const range=Math.sqrt(x*x+y*y);return {bearing:normalizeDeg(radToDeg(Math.atan2(x,y))),range}}
+function headingVector(heading){const rad=degToRad(heading);return {x:Math.sin(rad),y:Math.cos(rad)}}
 function randomSignedFloat(max){return (Math.random()*2-1)*max}
+function displayPointFromXY(x,y){
+  const p=xyToPolar(x,y);
+  const bearing=Math.round(p.bearing);
+  const distance=Math.round(p.range);
+  const xy=polarToXY(bearing,distance);
+  return {bearing,distance,x:xy.x,y:xy.y};
+}
+function vectorBetween(a,b){return {x:b.x-a.x,y:b.y-a.y}}
+function vectorLength(v){return Math.sqrt(v.x*v.x+v.y*v.y)}
+function vectorAngleDeg(a,b){
+  const la=vectorLength(a),lb=vectorLength(b);
+  if(!la||!lb)return 0;
+  const dot=clamp((a.x*b.x+a.y*b.y)/(la*lb),-1,1);
+  return Math.acos(dot)*180/Math.PI;
+}
 function buildInitialBearings(){
   const first=randomInt(8,28);
   const gaps=Array.from({length:5},()=>randomInt(48,60));
@@ -369,55 +389,77 @@ function buildInitialBearings(){
   for(const gap of gaps)bearings.push(normalizeDeg(bearings[bearings.length-1]+gap));
   return bearings;
 }
-function makePlaneStates(){
-  const bearings=buildInitialBearings();
-  return planeIds.map((id,index)=>({
-    id,
-    bearing:bearings[index],
-    range:randomInt(125,215),
-    stepDistance:randomInt(MIN_STEP_DISTANCE,MAX_STEP_DISTANCE),
-    radialDirection:Math.random()>.5?1:-1,
-    bearingRate:randomSignedFloat(0.7),
-    targetBearingRate:randomSignedFloat(0.9),
-    stepsToRetarget:randomInt(4,8)
-  }));
+function chooseInitialHeading(bearing,range){
+  const tangent=normalizeDeg(bearing+(Math.random()>.5?90:-90));
+  const radial=normalizeDeg(bearing+(range>145?180:0));
+  const mix=Math.random();
+  if(mix<.25)return radial;
+  if(mix<.6)return normalizeDeg(tangent+randomSignedFloat(18));
+  return normalizeDeg((radial*.55+tangent*.45)+randomSignedFloat(10));
 }
-function retargetPlane(plane){
-  if(plane.range>260)plane.radialDirection=-1;
-  else if(plane.range<90)plane.radialDirection=1;
-  else if(Math.random()<0.08)plane.radialDirection*=-1;
-  if(plane.stepsToRetarget<=0){
-    plane.stepsToRetarget=randomInt(4,9);
-    plane.targetBearingRate=randomSignedFloat(1.2);
-  }else{
-    plane.stepsToRetarget-=1;
-  }
+function makeTurnOptions(){
+  const turns=[];
+  if(Math.random()<STRAIGHT_PROBABILITY)turns.push(0,0,0,0);
+  for(let t=-MAX_SEGMENT_TURN_DEG;t<=MAX_SEGMENT_TURN_DEG;t+=1)turns.push(t);
+  return turns.sort(()=>Math.random()-.5);
 }
-function nextRangeForStep(range,deltaDeg,step,radialDirection){
-  const deltaRad=degToRad(Math.abs(deltaDeg));
-  const lateral=range*Math.sin(deltaRad);
-  const radial=Math.sqrt(Math.max(0,step*step-lateral*lateral));
-  const base=range*Math.cos(deltaRad);
-  return base+radialDirection*radial;
+function makeRoutePoint(x,y,heading,turn,speed){
+  const nextHeading=normalizeDeg(heading+turn);
+  const v=headingVector(nextHeading);
+  const nx=x+v.x*speed;
+  const ny=y+v.y*speed;
+  const polar=xyToPolar(nx,ny);
+  return {x:nx,y:ny,heading:nextHeading,range:polar.range,display:displayPointFromXY(nx,ny),turn};
 }
-function movePlane(plane){
-  retargetPlane(plane);
-  const rateDelta=clamp(plane.targetBearingRate-plane.bearingRate,-MAX_BEARING_ACCEL_DEG,MAX_BEARING_ACCEL_DEG);
-  plane.bearingRate=clamp(plane.bearingRate+rateDelta,-MAX_BEARING_STEP_DEG,MAX_BEARING_STEP_DEG);
-  const maxByStep=Math.max(0,Math.asin(Math.min(0.95,plane.stepDistance/Math.max(plane.range,1)))*180/Math.PI-0.05);
-  let delta=clamp(plane.bearingRate,-maxByStep,maxByStep);
-  let nextRange=nextRangeForStep(plane.range,delta,plane.stepDistance,plane.radialDirection);
-  if(nextRange<MIN_RANGE||nextRange>MAX_RANGE){
-    plane.radialDirection*=-1;
-    nextRange=nextRangeForStep(plane.range,delta,plane.stepDistance,plane.radialDirection);
+function generatePlanePath(id,startBearing,rounds){
+  for(let attempt=0;attempt<1800;attempt++){
+    const speed=randomInt(MIN_STEP_DISTANCE,MAX_STEP_DISTANCE);
+    const startRange=randomInt(80,190);
+    const start=polarToXY(startBearing+randomSignedFloat(8),startRange);
+    let pos={x:start.x,y:start.y};
+    let heading=normalizeDeg(randomInt(0,359));
+    const turnRate=Math.random()<.34?0:randomSignedFloat(6);
+    let currentDisplay=displayPointFromXY(pos.x,pos.y);
+    let prevVector=null;
+    let previousRangeDelta=0;
+    let radialFlips=0;
+    const path=[{plane:id,bearing:currentDisplay.bearing,distance:currentDisplay.distance}];
+    let ok=true;
+    for(let step=1;step<rounds;step++){
+      heading=normalizeDeg(heading+turnRate);
+      const v=headingVector(heading);
+      const next={x:pos.x+v.x*speed,y:pos.y+v.y*speed};
+      const polar=xyToPolar(next.x,next.y);
+      if(polar.range<MIN_RANGE||polar.range>MAX_RANGE){ok=false;break}
+      const display=displayPointFromXY(next.x,next.y);
+      const seg=vectorBetween(currentDisplay,display);
+      const dist=vectorLength(seg);
+      if(dist<15||dist>20){ok=false;break}
+      if(prevVector&&vectorAngleDeg(prevVector,seg)>10){ok=false;break}
+      const rangeDelta=display.distance-currentDisplay.distance;
+      if(previousRangeDelta&&rangeDelta&&Math.sign(rangeDelta)!==Math.sign(previousRangeDelta))radialFlips+=1;
+      if(radialFlips>2){ok=false;break}
+      previousRangeDelta=rangeDelta||previousRangeDelta;
+      prevVector=seg;
+      pos=next;
+      currentDisplay=display;
+      path.push({plane:id,bearing:display.bearing,distance:display.distance});
+    }
+    if(ok&&path.length===rounds)return path;
   }
-  if(nextRange<MIN_RANGE||nextRange>MAX_RANGE){
-    delta=0;
-    nextRange=nextRangeForStep(plane.range,delta,plane.stepDistance,plane.radialDirection);
+  return generateFallbackPlanePath(id,startBearing,rounds,randomInt(MIN_STEP_DISTANCE,MAX_STEP_DISTANCE));
+}
+function generateFallbackPlanePath(id,startBearing,rounds,speed){
+  const range=randomInt(145,190);
+  const direction=Math.random()>.5?1:-1;
+  const delta=6*direction;
+  const path=[];
+  let bearing=normalizeDeg(startBearing+randomSignedFloat(3));
+  for(let i=0;i<rounds;i++){
+    path.push({plane:id,bearing:Math.round(bearing),distance:range});
+    bearing=normalizeDeg(bearing+delta);
   }
-  plane.bearing=normalizeDeg(plane.bearing+delta);
-  plane.range=clamp(nextRange,MIN_RANGE,MAX_RANGE);
-  return {plane:plane.id,bearing:Math.round(plane.bearing),distance:Math.round(plane.range)};
+  return path;
 }
 function generateData(){
   stopPlayback(false);
@@ -425,12 +467,11 @@ function generateData(){
   const total=Math.max(6,Math.round(requested/6)*6);
   els.countInput.value=total;
   const rounds=total/6;
-  const planes=makePlaneStates();
+  const bearings=buildInitialBearings();
+  const paths=planeIds.map((id,index)=>generatePlanePath(id,bearings[index],rounds));
   rows=[];
   for(let round=0;round<rounds;round++){
-    for(const plane of planes){
-      rows.push(movePlane(plane));
-    }
+    for(const path of paths)rows.push(path[round]);
   }
   currentIndex=0;
   renderRows();
