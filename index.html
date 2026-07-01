@@ -412,18 +412,44 @@ function makeRoutePoint(x,y,heading,turn,speed){
   const polar=xyToPolar(nx,ny);
   return {x:nx,y:ny,heading:nextHeading,range:polar.range,display:displayPointFromXY(nx,ny),turn};
 }
+// 航迹类型 + 起点距离 + 初始朝向偏移（相对径向）
+// 真实航迹分布：进近/离场偏少，过境/绕圈偏多
+const FLIGHT_TYPE_TABLE=[
+  // type,        startRange, headingOffsetMin, headingOffsetMax
+  ["approach",  [190,280],  -60,  60],   // 进近：外圈起步，朝中心方向
+  ["departure", [80,150],   120, 240],   // 离场：内圈起步，朝外方向
+  ["departure", [80,150],   120, 240],   // 离场 ×2 提高占比
+  ["transit",   [120,250],   60, 120],   // 过境：切向穿越
+  ["transit",   [120,250],   60, 120],   // 过境 ×4
+  ["transit",   [120,250],   60, 120],
+  ["transit",   [120,250],   60, 120],
+  ["orbit",     [150,250],   70, 110],   // 绕圈：贴近外圈沿圆周
+  ["orbit",     [150,250],   70, 110]    // 绕圈 ×2
+];
+function pickFlightTypeConfig(){
+  const entry=FLIGHT_TYPE_TABLE[randomInt(0,FLIGHT_TYPE_TABLE.length-1)];
+  return {
+    type:entry[0],
+    startRangeMin:entry[1][0],
+    startRangeMax:entry[1][1],
+    headingOffsetMin:entry[2],
+    headingOffsetMax:entry[3]
+  };
+}
 function generatePlanePath(id,startBearing,rounds){
   for(let attempt=0;attempt<1800;attempt++){
-    // 每架飞机固定一个初始速度（15-20km/步），外圈偏快
+    // 每架飞机固定一个初始速度（15-20km/步）
     const speed=randomInt(MIN_STEP_DISTANCE,MAX_STEP_DISTANCE);
-    // 双峰初始距离：进近（内圈）vs 过境/离场（外圈）50/50
-    const startRange=Math.random()<.50
-      ?randomInt(80,150)   // 进近/内圈 50%
-      :randomInt(190,280); // 过境/离场 50%
+    // 按航迹类型决定起点距离与初始朝向
+    const cfg=pickFlightTypeConfig();
+    const startRange=randomInt(cfg.startRangeMin,cfg.startRangeMax);
     const start=polarToXY(startBearing+randomSignedFloat(8),startRange);
     let pos={x:start.x,y:start.y};
-    let heading=normalizeDeg(randomInt(0,359));
-    // 初始转弯率：直线（34%）或弧线（66%）
+    // 起点径向方向（指向圆心）+ 类型指定的角度偏移 = 初始 heading
+    const radialInward=normalizeDeg(startBearing+180);  // 指向中心
+    const offset=randomInt(cfg.headingOffsetMin,cfg.headingOffsetMax);
+    let heading=normalizeDeg(radialInward+offset);
+    // 转弯率：直线（34%）或弧线（66%）
     let turnRate=Math.random()<.34?0:randomSignedFloat(6);
     let currentDisplay=displayPointFromXY(pos.x,pos.y);
     let prevVector=null;
