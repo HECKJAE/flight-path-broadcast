@@ -395,8 +395,8 @@ function bearingDistanceToXY(bearing,distance){
 function initRadar(){
   const svg=els.radarSvg;
   svg.innerHTML="";
-  // 背景深色圆（手机 SVG 元素自身做背景，不依赖 CSS）— 最先画，在所有元素之下
-  svg.insertAdjacentHTML("afterbegin",`<circle cx="0" cy="0" r="120" fill="#0b1120"/>`);
+  // 底图：480x480 PNG，手机浏览器兼容性最好，铺满 SVG
+  svg.insertAdjacentHTML("afterbegin",`<image href="radar-bg.png" x="-120" y="-120" width="240" height="240" preserveAspectRatio="xMidYMid slice"/>`);
   // 6 圈同心圆（每圈 50km）
   for(let i=1;i<=6;i++){
     const cls=i%2===0?"ring-major":"ring";
