@@ -266,9 +266,9 @@
       .now-output{letter-spacing:2px}
     }
     /* Live Radar */
-    .radar-panel{padding:14px}
+    .radar-panel{padding:14px;background-color:#0b1120;border-radius:0 0 var(--radius-lg) var(--radius-lg)}
     .radar-panel .toolbar{padding:0 0 10px;border-bottom:0;background:transparent}
-    #radarSvg{display:block;width:100%;height:auto;margin:0 auto;border-radius:50%;background-color:#0b1120;touch-action:manipulation}
+    #radarSvg{display:block;width:100%;height:auto;margin:0 auto;border-radius:50%;touch-action:manipulation;background:transparent}
     #radarSvg .ring{fill:none;stroke:#1e2d45;stroke-width:0.5}
     #radarSvg .ring-major{stroke:#2a3f5f;stroke-width:0.8}
     #radarSvg .spoke{stroke:#1a2638;stroke-width:0.4}
@@ -396,7 +396,7 @@ function initRadar(){
   const svg=els.radarSvg;
   svg.innerHTML="";
   // 底图：480x480 PNG，手机浏览器兼容性最好，铺满 SVG
-  svg.insertAdjacentHTML("afterbegin",`<rect x="-120" y="-120" width="240" height="240" fill="#0b1120"/>`);
+  // 底色由 .radar-panel background-color 提供；SVG 透明显示
   // 6 圈同心圆（每圈 50km）
   for(let i=1;i<=6;i++){
     const cls=i%2===0?"ring-major":"ring";
