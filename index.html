@@ -268,7 +268,7 @@
     /* Live Radar */
     .radar-panel{padding:14px}
     .radar-panel .toolbar{padding:0 0 10px;border-bottom:0;background:transparent}
-    #radarSvg{display:block;width:100%;height:auto;margin:0 auto;border-radius:50%;background:radial-gradient(circle at 50% 50%,#0d1b2e 0%,#0b1120 70%);touch-action:manipulation}
+    #radarSvg{display:block;width:100%;height:auto;margin:0 auto;border-radius:50%;background:#0b1120;touch-action:manipulation}
     #radarSvg .ring{fill:none;stroke:#1e2d45;stroke-width:0.5}
     #radarSvg .ring-major{stroke:#2a3f5f;stroke-width:0.8}
     #radarSvg .spoke{stroke:#1a2638;stroke-width:0.4}
@@ -326,7 +326,7 @@
           <button id="radarToggle" class="radar-toggle" type="button" aria-label="收起/展开雷达图">▼</button>
         </div>
         <div class="radar-body">
-          <svg id="radarSvg" viewBox="-110 -110 220 220" preserveAspectRatio="xMidYMid meet" aria-label="雷达航迹图"></svg>
+          <svg id="radarSvg" viewBox="-120 -120 240 240" preserveAspectRatio="xMidYMid meet" aria-label="雷达航迹图"></svg>
         </div>
       </section>
 
@@ -396,7 +396,7 @@ function initRadar(){
   const svg=els.radarSvg;
   svg.innerHTML="";
   // 背景深色圆（手机 SVG 元素自身做背景，不依赖 CSS）— 最先画，在所有元素之下
-  svg.insertAdjacentHTML("afterbegin",`<circle cx="0" cy="0" r="115" fill="#0b1120"/>`);
+  svg.insertAdjacentHTML("afterbegin",`<circle cx="0" cy="0" r="120" fill="#0b1120"/>`);
   // 6 圈同心圆（每圈 50km）
   for(let i=1;i<=6;i++){
     const cls=i%2===0?"ring-major":"ring";
