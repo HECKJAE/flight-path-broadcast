@@ -396,7 +396,17 @@ function initRadar(){
   const svg=els.radarSvg;
   svg.innerHTML="";
   // 底图：480x480 PNG，手机浏览器兼容性最好，铺满 SVG
-  svg.insertAdjacentHTML("afterbegin",`<image href="https://cdn.jsdelivr.net/gh/HECKJAE/flight-path-broadcast@main/radar-bg.png" x="-120" y="-120" width="240" height="240" preserveAspectRatio="xMidYMid slice"/>`);
+  // 底图：用 DOM API 创建 SVG image 元素（手机浏览器兼容）
+  const imgNS="http://www.w3.org/2000/svg";
+  const imgEl=document.createElementNS(imgNS,"image");
+  imgEl.setAttribute("href","https://cdn.jsdelivr.net/gh/HECKJAE/flight-path-broadcast@main/radar-bg.png");
+  imgEl.setAttributeNS("http://www.w3.org/1999/xlink","href","https://cdn.jsdelivr.net/gh/HECKJAE/flight-path-broadcast@main/radar-bg.png");
+  imgEl.setAttribute("x","-120");
+  imgEl.setAttribute("y","-120");
+  imgEl.setAttribute("width","240");
+  imgEl.setAttribute("height","240");
+  imgEl.setAttribute("preserveAspectRatio","xMidYMid slice");
+  svg.insertBefore(imgEl,svg.firstChild);
   // 6 圈同心圆（每圈 50km）
   for(let i=1;i<=6;i++){
     const cls=i%2===0?"ring-major":"ring";
