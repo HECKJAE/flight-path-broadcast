@@ -414,12 +414,17 @@ function makeRoutePoint(x,y,heading,turn,speed){
 }
 function generatePlanePath(id,startBearing,rounds){
   for(let attempt=0;attempt<1800;attempt++){
+    // 每架飞机固定一个初始速度（15-20km/步），外圈偏快
     const speed=randomInt(MIN_STEP_DISTANCE,MAX_STEP_DISTANCE);
-    const startRange=randomInt(80,190);
+    // 双峰初始距离：进近（内圈）vs 过境/离场（外圈）
+    const startRange=Math.random()<.35
+      ?randomInt(80,150)   // 进近/内圈 35%
+      :randomInt(190,280); // 过境/离场 65%
     const start=polarToXY(startBearing+randomSignedFloat(8),startRange);
     let pos={x:start.x,y:start.y};
     let heading=normalizeDeg(randomInt(0,359));
-    const turnRate=Math.random()<.34?0:randomSignedFloat(6);
+    // 初始转弯率：直线（34%）或弧线（66%）
+    let turnRate=Math.random()<.34?0:randomSignedFloat(6);
     let currentDisplay=displayPointFromXY(pos.x,pos.y);
     let prevVector=null;
     let previousRangeDelta=0;
@@ -427,6 +432,11 @@ function generatePlanePath(id,startBearing,rounds){
     const path=[{plane:id,bearing:currentDisplay.bearing,distance:currentDisplay.distance}];
     let ok=true;
     for(let step=1;step<rounds;step++){
+      // A. 转弯惯性：60% 概率保持当前转弯率，40% 小幅调整（±1.5°），而非每步重新掷骰子
+      if(Math.random()>=0.60){
+        const delta=(Math.random()<.5?-1:1)*randomInt(1,2);
+        turnRate=clamp(turnRate+delta,-MAX_SEGMENT_TURN_DEG,MAX_SEGMENT_TURN_DEG);
+      }
       heading=normalizeDeg(heading+turnRate);
       const v=headingVector(heading);
       const next={x:pos.x+v.x*speed,y:pos.y+v.y*speed};
