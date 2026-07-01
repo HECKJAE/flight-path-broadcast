@@ -230,7 +230,7 @@
       font-variant-numeric:tabular-nums;
       transition:background .15s,border-color .15s,transform .15s,box-shadow .15s;
     }
-    .row:nth-child(6n){margin-bottom:6px;border-bottom:1px solid var(--line)}
+    .row:nth-child(16n){margin-bottom:6px;border-bottom:1px solid var(--line)}
     .row.active{
       background:linear-gradient(90deg,rgba(0,201,167,.2),rgba(0,201,167,.08));
       border-color:var(--accent);
@@ -305,7 +305,7 @@
         <div class="controls-grid">
           <div class="field">
             <label>生成组数</label>
-            <input id="countInput" type="number" min="6" max="600" step="6" value="120">
+            <input id="countInput" type="number" min="16" max="800" step="16" value="160">
           </div>
           <div class="field">
             <label>播报语速 <span class="val" id="playbackRateVal">1.0x</span></label>
@@ -344,7 +344,7 @@
   </main>
 
 <script>
-const planeIds=["01","02","03","41","42","43"];
+const planeIds=["01","02","03","08","41","42","43","48"];
 const digitWords={"0":"洞","1":"幺","2":"两","3":"叁","4":"肆","5":"伍","6":"六","7":"拐","8":"捌","9":"勾"};
 const digitAudio={};
 let audioCtx=null,audioBuffers={},activeSources=[];
@@ -384,7 +384,7 @@ function vectorAngleDeg(a,b){
 }
 function buildInitialBearings(){
   const first=randomInt(8,28);
-  const gaps=Array.from({length:5},()=>randomInt(48,60));
+  const gaps=Array.from({length:planeIds.length-1},()=>randomInt(38,48));
   const bearings=[first];
   for(const gap of gaps)bearings.push(normalizeDeg(bearings[bearings.length-1]+gap));
   return bearings;
@@ -463,10 +463,10 @@ function generateFallbackPlanePath(id,startBearing,rounds,speed){
 }
 function generateData(){
   stopPlayback(false);
-  const requested=Number(els.countInput.value)||120;
-  const total=Math.max(6,Math.round(requested/6)*6);
+  const requested=Number(els.countInput.value)||160;
+  const total=Math.max(16,Math.round(requested/16)*16);
   els.countInput.value=total;
-  const rounds=total/6;
+  const rounds=total/planeIds.length;
   const bearings=buildInitialBearings();
   const paths=planeIds.map((id,index)=>generatePlanePath(id,bearings[index],rounds));
   rows=[];
@@ -476,10 +476,10 @@ function generateData(){
   currentIndex=0;
   renderRows();
   updateStatus();
-  showToast(`已生成 ${rows.length} 组`);
+  showToast(`已生成 ${rows.length} 行`);
 }
 function formatRow(row){return `${row.plane} ${pad3(row.bearing)} ${pad3(row.distance)}`}
-function renderRows(){els.dataList.innerHTML=rows.map((row,index)=>`<div class="row" data-index="${index}"><span>${row.plane}</span><span>${pad3(row.bearing)}</span><span>${pad3(row.distance)}</span></div>`).join("");els.summaryText.textContent=`${rows.length} 组 · ${rows.length/6} 轮`}
+function renderRows(){els.dataList.innerHTML=rows.map((row,index)=>`<div class="row" data-index="${index}"><span>${row.plane}</span><span>${pad3(row.bearing)}</span><span>${pad3(row.distance)}</span></div>`).join("");els.summaryText.textContent=`${rows.length} 行 · ${rows.length/16} 组 · ${rows.length/planeIds.length} 轮`}
 function getIntervalMs(){return clamp(Number(els.intervalInput.value)||3.0,0.5,10)*1000}
 function getPlaybackRate(){return clamp(Number(els.playbackRateInput.value)||1.0,0.5,3.0)}
 function getColGap(){return clamp(Number(els.colGapInput.value)||0.10,0.0,1.0)}
