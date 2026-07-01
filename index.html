@@ -511,11 +511,13 @@ function vectorAngleDeg(a,b){
   return Math.acos(dot)*180/Math.PI;
 }
 function buildInitialBearings(){
-  const step=360/planeIds.length;
-  const start=randomInt(0,359);
+  // step=20：16×20=320°，留下 40° 缺口，16 架不绕圈，重叠减少
+  // ±4° 抖动，不影响最小间距
+  const step=20;
+  const start=randomInt(0,320);
   const bearings=[];
   for(let i=0;i<planeIds.length;i++)bearings.push(normalizeDeg(start+i*step));
-  for(let i=0;i<bearings.length;i++)bearings[i]=normalizeDeg(bearings[i]+randomSignedFloat(6));
+  for(let i=0;i<bearings.length;i++)bearings[i]=normalizeDeg(bearings[i]+randomSignedFloat(4));
   return bearings;
 }
 function chooseInitialHeading(bearing,range){
