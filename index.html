@@ -305,7 +305,7 @@
         <div class="controls-grid">
           <div class="field">
             <label>生成组数</label>
-            <input id="countInput" type="number" min="1" max="100" step="1" value="16">
+            <input id="countInput" type="number" min="1" max="100" step="1" value="15">
           </div>
           <div class="field">
             <label>播报语速 <span class="val" id="playbackRateVal">1.0x</span></label>
@@ -344,7 +344,7 @@
   </main>
 
 <script>
-const planeIds=["01","02","03","08","41","42","43","48"];
+const planeIds=["01","02","03","04","05","06","07","08","41","42","43","44","45","46","47","48"];
 const digitWords={"0":"洞","1":"幺","2":"两","3":"叁","4":"肆","5":"伍","6":"六","7":"拐","8":"捌","9":"勾"};
 const digitAudio={};
 let audioCtx=null,audioBuffers={},activeSources=[];
@@ -383,10 +383,11 @@ function vectorAngleDeg(a,b){
   return Math.acos(dot)*180/Math.PI;
 }
 function buildInitialBearings(){
-  const first=randomInt(8,28);
-  const gaps=Array.from({length:planeIds.length-1},()=>randomInt(38,48));
-  const bearings=[first];
-  for(const gap of gaps)bearings.push(normalizeDeg(bearings[bearings.length-1]+gap));
+  const step=360/planeIds.length;
+  const start=randomInt(0,359);
+  const bearings=[];
+  for(let i=0;i<planeIds.length;i++)bearings.push(normalizeDeg(start+i*step));
+  for(let i=0;i<bearings.length;i++)bearings[i]=normalizeDeg(bearings[i]+randomSignedFloat(6));
   return bearings;
 }
 function chooseInitialHeading(bearing,range){
