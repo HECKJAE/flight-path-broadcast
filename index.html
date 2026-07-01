@@ -265,6 +265,20 @@
       .row{grid-template-columns:46px 1fr 1fr;font-size:15px;padding:6px 8px;min-height:36px}
       .now-output{letter-spacing:2px}
     }
+    /* Live Radar */
+    .radar-panel{padding:14px}
+    .radar-panel .toolbar{padding:0 0 10px;border-bottom:0;background:transparent}
+    #radarSvg{display:block;width:100%;height:auto;margin:0 auto;border-radius:50%;background:radial-gradient(circle at 50% 50%,#0d1b2e 0%,#0b1120 70%);touch-action:manipulation}
+    #radarSvg .ring{fill:none;stroke:#1e2d45;stroke-width:0.5}
+    #radarSvg .ring-major{stroke:#2a3f5f;stroke-width:0.8}
+    #radarSvg .spoke{stroke:#1a2638;stroke-width:0.4}
+    #radarSvg .spoke-major{stroke:#2a3f5f;stroke-width:0.7}
+    #radarSvg .label{fill:#5f7a99;font-family:monospace;font-size:6px;text-anchor:middle}
+    #radarSvg .ring-label{fill:#00c9a7;font-family:monospace;font-size:7px;text-anchor:middle;opacity:.7}
+    #radarSvg .now-blip{stroke:#fff;stroke-width:1.5;filter:drop-shadow(0 0 3px currentColor)}
+    #radarSvg .track{fill:none;stroke-width:1.2;opacity:.7}
+    #radarSvg .plane-dot{fill-opacity:.9}
+    #radarSvg .plane-label{font-family:monospace;font-size:7px;font-weight:700;fill:#fff;text-anchor:start}
   </style>
 </head>
 <body>
@@ -297,6 +311,12 @@
             <div class="metric"><b id="windowText">待机</b><span>状态</span></div>
           </div>
         </div>
+      </section>
+
+      <!-- Live Radar Map -->
+      <section class="panel radar-panel">
+        <div class="toolbar"><strong>实时航迹图</strong><span id="radarSummary">尚未播报</span></div>
+        <svg id="radarSvg" viewBox="-110 -110 220 220" preserveAspectRatio="xMidYMid meet" aria-label="雷达航迹图"></svg>
       </section>
 
       <!-- Controls -->
@@ -348,10 +368,98 @@ const planeIds=["01","02","03","04","05","06","07","08","41","42","43","44","45"
 const digitWords={"0":"洞","1":"幺","2":"两","3":"叁","4":"肆","5":"伍","6":"六","7":"拐","8":"捌","9":"勾"};
 const digitAudio={};
 let audioCtx=null,audioBuffers={},activeSources=[];
-const els={countInput:document.getElementById("countInput"),intervalInput:document.getElementById("intervalInput"),intervalVal:document.getElementById("intervalVal"),playbackRateInput:document.getElementById("playbackRateInput"),playbackRateVal:document.getElementById("playbackRateVal"),colGapInput:document.getElementById("colGapInput"),colGapVal:document.getElementById("colGapVal"),rateVal:document.getElementById("rateVal"),generateBtn:document.getElementById("generateBtn"),playBtn:document.getElementById("playBtn"),pauseBtn:document.getElementById("pauseBtn"),stopBtn:document.getElementById("stopBtn"),copyBtn:document.getElementById("copyBtn"),progressText:document.getElementById("progressText"),paceText:document.getElementById("paceText"),rateValText:document.getElementById("rateValText"),windowText:document.getElementById("windowText"),nowOutput:document.getElementById("nowOutput"),toast:document.getElementById("toast"),audioLoad:document.getElementById("audioLoad"),audioLoadText:document.getElementById("audioLoadText"),audioLoadBar:document.getElementById("audioLoadBar"),dataList:document.getElementById("dataList"),summaryText:document.getElementById("summaryText"),nowPanel:document.getElementById("nowPanel")};
+const els={countInput:document.getElementById("countInput"),intervalInput:document.getElementById("intervalInput"),intervalVal:document.getElementById("intervalVal"),playbackRateInput:document.getElementById("playbackRateInput"),playbackRateVal:document.getElementById("playbackRateVal"),colGapInput:document.getElementById("colGapInput"),colGapVal:document.getElementById("colGapVal"),rateVal:document.getElementById("rateVal"),generateBtn:document.getElementById("generateBtn"),playBtn:document.getElementById("playBtn"),pauseBtn:document.getElementById("pauseBtn"),stopBtn:document.getElementById("stopBtn"),copyBtn:document.getElementById("copyBtn"),progressText:document.getElementById("progressText"),paceText:document.getElementById("paceText"),rateValText:document.getElementById("rateValText"),windowText:document.getElementById("windowText"),nowOutput:document.getElementById("nowOutput"),toast:document.getElementById("toast"),audioLoad:document.getElementById("audioLoad"),audioLoadText:document.getElementById("audioLoadText"),audioLoadBar:document.getElementById("audioLoadBar"),dataList:document.getElementById("dataList"),summaryText:document.getElementById("summaryText"),nowPanel:document.getElementById("nowPanel"),radarSvg:document.getElementById("radarSvg"),radarSummary:document.getElementById("radarSummary")};
 let rows=[],currentIndex=0,playing=false,paused=false,timerId=0,lastActive=null,isStarting=false;
 function pad3(v){return String(Math.round(v)).padStart(3,"0")}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+
+// === Live Radar ===
+const PLANE_COLORS=planeIds.map((_,i)=>`hsl(${(i*360/planeIds.length)|0},75%,58%)`);
+const RADAR_RMAX=100;  // SVG 半径对应 300km
+function bearingDistanceToXY(bearing,distance){
+  const rad=bearing*Math.PI/180;
+  const r=distance*RADAR_RMAX/300;
+  return {x:Math.sin(rad)*r,y:-Math.cos(rad)*r};   // 0° 在上方，顺时针
+}
+function initRadar(){
+  const svg=els.radarSvg;
+  svg.innerHTML="";
+  // 6 圈同心圆（每圈 50km）
+  for(let i=1;i<=6;i++){
+    const cls=i%2===0?"ring-major":"ring";
+    svg.insertAdjacentHTML("beforeend",`<circle cx="0" cy="0" r="${i*RADAR_RMAX/6}" class="${cls}"/>`);
+  }
+  // 距离标签（50/100/.../300 顶部方向）
+  for(let i=1;i<=6;i++){
+    const r=i*RADAR_RMAX/6;
+    svg.insertAdjacentHTML("beforeend",`<text x="3" y="${-(r+3)}" class="ring-label">${i*50}</text>`);
+  }
+  // 36 条放射线（每 10°）
+  for(let i=0;i<36;i++){
+    const deg=i*10;
+    const rad=deg*Math.PI/180;
+    const x=Math.sin(rad)*RADAR_RMAX,y=-Math.cos(rad)*RADAR_RMAX;
+    const cls=deg%90===0?"spoke-major":"spoke";
+    svg.insertAdjacentHTML("beforeend",`<line x1="0" y1="0" x2="${x.toFixed(2)}" y2="${y.toFixed(2)}" class="${cls}"/>`);
+  }
+  // 方位标签（每 30°）
+  for(let deg=0;deg<360;deg+=30){
+    const rad=deg*Math.PI/180;
+    const x=Math.sin(rad)*(RADAR_RMAX+7),y=-Math.cos(rad)*(RADAR_RMAX+7);
+    svg.insertAdjacentHTML("beforeend",`<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" class="label">${String(deg).padStart(3,"0")}</text>`);
+  }
+  svg.insertAdjacentHTML("beforeend",`<circle cx="0" cy="0" r="1.5" fill="#5de8c6"/>`);
+}
+let planeTracks={};   // {planeId: [{x,y,rowIdx}]}
+let planeColors={};
+function clearRadar(){
+  planeTracks={};
+  const svg=els.radarSvg;
+  svg.querySelectorAll(".track,.plane-dot,.plane-label,.now-blip").forEach(n=>n.remove());
+  els.radarSummary.textContent="尚未播报";
+}
+function colorForPlane(planeId){
+  const idx=planeIds.indexOf(planeId);
+  return idx>=0?PLANE_COLORS[idx]:"#888";
+}
+function addRadarPoint(rowIdx){
+  const row=rows[rowIdx];
+  if(!row)return;
+  const planeId=row.plane;
+  const xy=bearingDistanceToXY(row.bearing,row.distance);
+  if(!planeTracks[planeId])planeTracks[planeId]=[];
+  const isFirstForPlane=planeTracks[planeId].length===0;
+  planeTracks[planeId].push({x:xy.x,y:xy.y,rowIdx});
+  const color=colorForPlane(planeId);
+  const svg=els.radarSvg;
+  // 添加新点（先点）
+  svg.insertAdjacentHTML("beforeend",
+    `<circle cx="${xy.x.toFixed(2)}" cy="${xy.y.toFixed(2)}" r="1.6" class="plane-dot" fill="${color}" data-plane="${planeId}"/>`
+  );
+  // 如果不是第一个点，画连线（拉一条历史航迹）
+  if(!isFirstForPlane){
+    const prev=planeTracks[planeId][planeTracks[planeId].length-2];
+    svg.insertAdjacentHTML("beforeend",
+      `<polyline points="${prev.x.toFixed(2)},${prev.y.toFixed(2)} ${xy.x.toFixed(2)},${xy.y.toFixed(2)}" class="track" stroke="${color}" data-plane="${planeId}"/>`
+    );
+  }
+  els.radarSummary.textContent=`已播报 ${rowIdx+1}/${rows.length} · 飞机 ${planeId}`;
+}
+function highlightRadar(rowIdx){
+  const svg=els.radarSvg;
+  svg.querySelectorAll(".now-blip,.plane-label").forEach(n=>n.remove());
+  if(rowIdx<0||rowIdx>=rows.length)return;
+  const row=rows[rowIdx];
+  const planeId=row.plane;
+  const xy=bearingDistanceToXY(row.bearing,row.distance);
+  const color=colorForPlane(planeId);
+  svg.insertAdjacentHTML("beforeend",
+    `<circle cx="${xy.x.toFixed(2)}" cy="${xy.y.toFixed(2)}" r="3.5" class="now-blip" fill="${color}"/>`
+  );
+  svg.insertAdjacentHTML("beforeend",
+    `<text class="plane-label" x="${(xy.x+4).toFixed(2)}" y="${(xy.y-3).toFixed(2)}" fill="${color}">${planeId}</text>`
+  );
+}
 function randomInt(min,max){return Math.floor(Math.random()*(max-min+1))+min}
 const MIN_RANGE=50;
 const MAX_RANGE=300;
@@ -500,6 +608,7 @@ function generateFallbackPlanePath(id,startBearing,rounds,speed){
 }
 function generateData(){
   stopPlayback(false);
+  clearRadar();
   const requested=Number(els.countInput.value)||16;
   const rounds=Math.max(1,Math.round(requested));
   els.countInput.value=rounds;
@@ -637,6 +746,8 @@ async function playLoop(){
   refreshRows(true);
   els.nowOutput.textContent=formatRow(row);
   els.nowOutput.classList.remove("waiting");
+  addRadarPoint(currentIndex);    // 播报时追加点到雷达图
+  highlightRadar(currentIndex);   // 高亮当前飞机
   updateStatus();
   await speakRow(row);
   if(!playing||paused)return;
@@ -738,6 +849,7 @@ els.copyBtn.addEventListener("click",copyData);
 els.intervalInput.addEventListener("input",updateStatus);
 els.playbackRateInput.addEventListener("input",updateStatus);
 els.colGapInput.addEventListener("input",updateStatus);
+initRadar();
 generateData();
 </script>
 </body>
