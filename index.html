@@ -274,7 +274,7 @@
     #radarSvg .spoke{stroke:#1a2638;stroke-width:0.4}
     #radarSvg .spoke-major{stroke:#2a3f5f;stroke-width:0.7}
     #radarSvg .label{fill:#5f7a99;font-family:monospace;font-size:6px;text-anchor:middle}
-    #radarSvg .ring-label{fill:#00c9a7;font-family:monospace;font-size:7px;text-anchor:middle;opacity:.7}
+    #radarSvg .ring-label{fill:#00c9a7;font-family:monospace;font-size:7px;text-anchor:middle;opacity:.25}
     #radarSvg .now-blip{stroke:#fff;stroke-width:1.5;filter:drop-shadow(0 0 3px currentColor)}
     #radarSvg .track{fill:none;stroke-width:1.2;opacity:.7}
     #radarSvg .plane-dot{fill-opacity:.9}
@@ -389,10 +389,10 @@ function initRadar(){
     const cls=i%2===0?"ring-major":"ring";
     svg.insertAdjacentHTML("beforeend",`<circle cx="0" cy="0" r="${i*RADAR_RMAX/6}" class="${cls}"/>`);
   }
-  // 距离标签（50/100/.../300 顶部方向）
+  // 距离标签（50/100/.../300 都在圈内顶部方向）
   for(let i=1;i<=6;i++){
     const r=i*RADAR_RMAX/6;
-    svg.insertAdjacentHTML("beforeend",`<text x="3" y="${-(r+3)}" class="ring-label">${i*50}</text>`);
+    svg.insertAdjacentHTML("beforeend",`<text x="3" y="${-(r-2)}" class="ring-label">${i*50}</text>`);
   }
   // 36 条放射线（每 10°）
   for(let i=0;i<36;i++){
